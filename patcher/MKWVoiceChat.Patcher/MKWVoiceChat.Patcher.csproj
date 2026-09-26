@@ -1,0 +1,138 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <PublishTrimmed>false</PublishTrimmed>
+    <AssemblyName>WiiCompiled-VoiceChat-Installer</AssemblyName>
+    <RootNamespace>MKWVoiceChat.Patcher</RootNamespace>
+    <MkwvcVersionFile>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\\..\\version.json'))</MkwvcVersionFile>
+    <MkwvcUpdaterProject>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\\MKWVoiceChat.Updater\\MKWVoiceChat.Updater.csproj'))</MkwvcUpdaterProject>
+    <MkwvcUpdaterPublishDir>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)obj\\embedded-updater\\$(Configuration)\\'))</MkwvcUpdaterPublishDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="..\\..\\version.json"
+                      LogicalName="MKWVoiceChat.Patcher.version.json" />
+    <EmbeddedResource Include="$(MkwvcUpdaterPublishDir)MKWVoiceChat-Updater.exe"
+                      LogicalName="MKWVoiceChat.Patcher.Updater.MKWVoiceChat-Updater.exe" />
+
+    <EmbeddedResource Include="..\payload\runtime\include\retro_rewind_voice_bridge.h"
+                      LogicalName="MKWVoiceChat.Patcher.Payload.retro_rewind_voice_bridge.h" />
+    <EmbeddedResource Include="..\payload\runtime\src\retro_rewind_voice_bridge.cpp"
+                      LogicalName="MKWVoiceChat.Patcher.Payload.retro_rewind_voice_bridge.cpp" />
+
+    <EmbeddedResource Include="..\payload\runtime\voicechat\CMakeLists.txt"
+                      LogicalName="MKWVoiceChat.Patcher.Payload.voicechat.CMakeLists.txt" />
+    <EmbeddedResource Include="..\payload\runtime\voicechat\include\mkwvc\EmbeddedCore.hpp"
+                      LogicalName="MKWVoiceChat.Patcher.Payload.voicechat.include.EmbeddedCore.hpp" />
+    <EmbeddedResource Include="..\payload\runtime\voicechat\src\EmbeddedCore.cpp"
+                      LogicalName="MKWVoiceChat.Patcher.Payload.voicechat.src.EmbeddedCore.cpp" />
+
+    <EmbeddedResource Include="..\..\include\mkwvc\AdaptiveJitterBuffer.hpp"
+                      LogicalName="MKWVoiceChat.Patcher.Payload.voicechat.include.AdaptiveJitterBuffer.hpp" />
+    <EmbeddedResource Include="..\..\include\mkwvc\AudioEngine.hpp"
+                      LogicalName="MKWVoiceChat.Patcher.Payload.voicechat.include.AudioEngine.hpp" />
+    <EmbeddedResource Include="..\..\include\mkwvc\AudioProcessor.hpp"
+                      LogicalName="MKWVoiceChat.Patcher.Payload.voicechat.include.AudioProcessor.hpp" />
+    <EmbeddedResource Include="..\..\include\mkwvc\MicrophoneTest.hpp"
+                      LogicalName="MKWVoiceChat.Patcher.Payload.voicechat.include.MicrophoneTest.hpp" />
+    <EmbeddedResource Include="..\..\include\mkwvc\NetworkSimulator.hpp"
+                      LogicalName="MKWVoiceChat.Patcher.Payload.voicechat.include.NetworkSimulator.hpp" />
+    <EmbeddedResource Include="..\..\include\mkwvc\OpusCodec.hpp"
+                      LogicalName="MKWVoiceChat.Patcher.Payload.voicechat.include.OpusCodec.hpp" />
+    <EmbeddedResource Include="..\..\include\mkwvc\SpscRingBuffer.hpp"
+                      LogicalName="MKWVoiceChat.Patcher.Payload.voicechat.include.SpscRingBuffer.hpp" />
+    <EmbeddedResource Include="..\..\include\mkwvc\UdpVoiceTransport.hpp"
+                      LogicalName="MKWVoiceChat.Patcher.Payload.voicechat.include.UdpVoiceTransport.hpp" />
+    <EmbeddedResource Include="..\..\include\mkwvc\VoiceClient.hpp"
+                      LogicalName="MKWVoiceChat.Patcher.Payload.voicechat.include.VoiceClient.hpp" />
+    <EmbeddedResource Include="..\..\include\mkwvc\VoiceFormat.hpp"
+                      LogicalName="MKWVoiceChat.Patcher.Payload.voicechat.include.VoiceFormat.hpp" />
+    <EmbeddedResource Include="..\..\include\mkwvc\VoiceTransport.hpp"
+                      LogicalName="MKWVoiceChat.Patcher.Payload.voicechat.include.VoiceTransport.hpp" />
+    <EmbeddedResource Include="..\..\include\mkwvc\IcePeerTransport.hpp"
+                      LogicalName="MKWVoiceChat.Patcher.Payload.voicechat.include.IcePeerTransport.hpp" />
+    <EmbeddedResource Include="..\..\include\mkwvc\IceSignal.hpp"
+                      LogicalName="MKWVoiceChat.Patcher.Payload.voicechat.include.IceSignal.hpp" />
+    <EmbeddedResource Include="..\..\include\mkwvc\SignalingClient.hpp"
+                      LogicalName="MKWVoiceChat.Patcher.Payload.voicechat.include.SignalingClient.hpp" />
+    <EmbeddedResource Include="..\..\src\AdaptiveJitterBuffer.cpp"
+                      LogicalName="MKWVoiceChat.Patcher.Payload.voicechat.src.AdaptiveJitterBuffer.cpp" />
+    <EmbeddedResource Include="..\..\src\AudioEngine.cpp"
+                      LogicalName="MKWVoiceChat.Patcher.Payload.voicechat.src.AudioEngine.cpp" />
+    <EmbeddedResource Include="..\..\src\AudioProcessor.cpp"
+                      LogicalName="MKWVoiceChat.Patcher.Payload.voicechat.src.AudioProcessor.cpp" />
+    <EmbeddedResource Include="..\..\src\MicrophoneTest.cpp"
+                      LogicalName="MKWVoiceChat.Patcher.Payload.voicechat.src.MicrophoneTest.cpp" />
+    <EmbeddedResource Include="..\..\src\NetworkSimulator.cpp"
+                      LogicalName="MKWVoiceChat.Patcher.Payload.voicechat.src.NetworkSimulator.cpp" />
+    <EmbeddedResource Include="..\..\src\OpusCodec.cpp"
+                      LogicalName="MKWVoiceChat.Patcher.Payload.voicechat.src.OpusCodec.cpp" />
+    <EmbeddedResource Include="..\..\src\UdpVoiceTransport.cpp"
+                      LogicalName="MKWVoiceChat.Patcher.Payload.voicechat.src.UdpVoiceTransport.cpp" />
+    <EmbeddedResource Include="..\..\src\IcePeerTransport.cpp"
+                      LogicalName="MKWVoiceChat.Patcher.Payload.voicechat.src.IcePeerTransport.cpp" />
+    <EmbeddedResource Include="..\..\src\IceSignal.cpp"
+                      LogicalName="MKWVoiceChat.Patcher.Payload.voicechat.src.IceSignal.cpp" />
+    <EmbeddedResource Include="..\..\src\SignalingClient.cpp"
+                      LogicalName="MKWVoiceChat.Patcher.Payload.voicechat.src.SignalingClient.cpp" />
+    <EmbeddedResource Include="..\..\src\VoiceClient.cpp"
+                      LogicalName="MKWVoiceChat.Patcher.Payload.voicechat.src.VoiceClient.cpp" />
+    <Content Include="..\..\third_party\rnnoise\COPYING" Link="RNNoise-LICENSE.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <EmbeddedResource Include="..\..\third_party\rnnoise\AUTHORS" LogicalName="MKWVoiceChat.Patcher.Payload.rnnoise.AUTHORS" />
+    <EmbeddedResource Include="..\..\third_party\rnnoise\CMakeLists.txt" LogicalName="MKWVoiceChat.Patcher.Payload.rnnoise.CMakeLists.txt" />
+    <EmbeddedResource Include="..\..\third_party\rnnoise\COPYING" LogicalName="MKWVoiceChat.Patcher.Payload.rnnoise.COPYING" />
+    <EmbeddedResource Include="..\..\third_party\rnnoise\README.mkwvc.md" LogicalName="MKWVoiceChat.Patcher.Payload.rnnoise.README.mkwvc.md" />
+    <EmbeddedResource Include="..\..\third_party\rnnoise\include\rnnoise.h" LogicalName="MKWVoiceChat.Patcher.Payload.rnnoise.include.rnnoise.h" />
+    <EmbeddedResource Include="..\..\third_party\rnnoise\src\_kiss_fft_guts.h" LogicalName="MKWVoiceChat.Patcher.Payload.rnnoise.src._kiss_fft_guts.h" />
+    <EmbeddedResource Include="..\..\third_party\rnnoise\src\arch.h" LogicalName="MKWVoiceChat.Patcher.Payload.rnnoise.src.arch.h" />
+    <EmbeddedResource Include="..\..\third_party\rnnoise\src\celt_lpc.c" LogicalName="MKWVoiceChat.Patcher.Payload.rnnoise.src.celt_lpc.c" />
+    <EmbeddedResource Include="..\..\third_party\rnnoise\src\celt_lpc.h" LogicalName="MKWVoiceChat.Patcher.Payload.rnnoise.src.celt_lpc.h" />
+    <EmbeddedResource Include="..\..\third_party\rnnoise\src\common.h" LogicalName="MKWVoiceChat.Patcher.Payload.rnnoise.src.common.h" />
+    <EmbeddedResource Include="..\..\third_party\rnnoise\src\cpu_support.h" LogicalName="MKWVoiceChat.Patcher.Payload.rnnoise.src.cpu_support.h" />
+    <EmbeddedResource Include="..\..\third_party\rnnoise\src\denoise.c" LogicalName="MKWVoiceChat.Patcher.Payload.rnnoise.src.denoise.c" />
+    <EmbeddedResource Include="..\..\third_party\rnnoise\src\denoise.h" LogicalName="MKWVoiceChat.Patcher.Payload.rnnoise.src.denoise.h" />
+    <EmbeddedResource Include="..\..\third_party\rnnoise\src\kiss_fft.c" LogicalName="MKWVoiceChat.Patcher.Payload.rnnoise.src.kiss_fft.c" />
+    <EmbeddedResource Include="..\..\third_party\rnnoise\src\kiss_fft.h" LogicalName="MKWVoiceChat.Patcher.Payload.rnnoise.src.kiss_fft.h" />
+    <EmbeddedResource Include="..\..\third_party\rnnoise\src\nnet.c" LogicalName="MKWVoiceChat.Patcher.Payload.rnnoise.src.nnet.c" />
+    <EmbeddedResource Include="..\..\third_party\rnnoise\src\nnet.h" LogicalName="MKWVoiceChat.Patcher.Payload.rnnoise.src.nnet.h" />
+    <EmbeddedResource Include="..\..\third_party\rnnoise\src\nnet_arch.h" LogicalName="MKWVoiceChat.Patcher.Payload.rnnoise.src.nnet_arch.h" />
+    <EmbeddedResource Include="..\..\third_party\rnnoise\src\nnet_default.c" LogicalName="MKWVoiceChat.Patcher.Payload.rnnoise.src.nnet_default.c" />
+    <EmbeddedResource Include="..\..\third_party\rnnoise\src\opus_types.h" LogicalName="MKWVoiceChat.Patcher.Payload.rnnoise.src.opus_types.h" />
+    <EmbeddedResource Include="..\..\third_party\rnnoise\src\parse_lpcnet_weights.c" LogicalName="MKWVoiceChat.Patcher.Payload.rnnoise.src.parse_lpcnet_weights.c" />
+    <EmbeddedResource Include="..\..\third_party\rnnoise\src\pitch.c" LogicalName="MKWVoiceChat.Patcher.Payload.rnnoise.src.pitch.c" />
+    <EmbeddedResource Include="..\..\third_party\rnnoise\src\pitch.h" LogicalName="MKWVoiceChat.Patcher.Payload.rnnoise.src.pitch.h" />
+    <EmbeddedResource Include="..\..\third_party\rnnoise\src\rnn.c" LogicalName="MKWVoiceChat.Patcher.Payload.rnnoise.src.rnn.c" />
+    <EmbeddedResource Include="..\..\third_party\rnnoise\src\rnn.h" LogicalName="MKWVoiceChat.Patcher.Payload.rnnoise.src.rnn.h" />
+    <EmbeddedResource Include="..\..\third_party\rnnoise\src\rnnoise_data.c" LogicalName="MKWVoiceChat.Patcher.Payload.rnnoise.src.rnnoise_data.c" />
+    <EmbeddedResource Include="..\..\third_party\rnnoise\src\rnnoise_data.h" LogicalName="MKWVoiceChat.Patcher.Payload.rnnoise.src.rnnoise_data.h" />
+    <EmbeddedResource Include="..\..\third_party\rnnoise\src\rnnoise_data_little.h" LogicalName="MKWVoiceChat.Patcher.Payload.rnnoise.src.rnnoise_data_little.h" />
+    <EmbeddedResource Include="..\..\third_party\rnnoise\src\rnnoise_tables.c" LogicalName="MKWVoiceChat.Patcher.Payload.rnnoise.src.rnnoise_tables.c" />
+    <EmbeddedResource Include="..\..\third_party\rnnoise\src\vec.h" LogicalName="MKWVoiceChat.Patcher.Payload.rnnoise.src.vec.h" />
+    <EmbeddedResource Include="..\..\third_party\rnnoise\src\vec_avx.h" LogicalName="MKWVoiceChat.Patcher.Payload.rnnoise.src.vec_avx.h" />
+    <EmbeddedResource Include="..\..\third_party\rnnoise\src\vec_neon.h" LogicalName="MKWVoiceChat.Patcher.Payload.rnnoise.src.vec_neon.h" />
+    <EmbeddedResource Include="..\..\third_party\rnnoise\src\x86\dnn_x86.h" LogicalName="MKWVoiceChat.Patcher.Payload.rnnoise.src.x86.dnn_x86.h" />
+    <EmbeddedResource Include="..\..\third_party\rnnoise\src\x86\x86_arch_macros.h" LogicalName="MKWVoiceChat.Patcher.Payload.rnnoise.src.x86.x86_arch_macros.h" />
+    <EmbeddedResource Include="..\..\third_party\rnnoise\src\x86\x86cpu.h" LogicalName="MKWVoiceChat.Patcher.Payload.rnnoise.src.x86.x86cpu.h" />
+    <EmbeddedResource Include="..\..\third_party\rnnoise\src\os_support.h" LogicalName="MKWVoiceChat.Patcher.Payload.rnnoise.src.os_support.h" />
+  </ItemGroup>
+  <Target Name="BuildEmbeddedUpdater" BeforeTargets="PrepareResourceNames">
+    <Exec Command="dotnet publish &quot;$(MkwvcUpdaterProject)&quot; -c $(Configuration) -r win-x64 --self-contained true -o &quot;$(MkwvcUpdaterPublishDir)&quot;" />
+    <Error Condition="!Exists('$(MkwvcUpdaterPublishDir)MKWVoiceChat-Updater.exe')" Text="MKW Voice Chat bootstrap updater publish did not produce MKWVoiceChat-Updater.exe." />
+  </Target>
+
+  <Target Name="LoadMkwvcProductVersion" BeforeTargets="GetAssemblyVersion">
+    <Exec
+      Command="powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command &quot;$ErrorActionPreference='Stop'; $m=Get-Content -LiteralPath '$(MkwvcVersionFile)' -Raw | ConvertFrom-Json; if([string]::IsNullOrWhiteSpace([string]$m.productVersion)){throw 'version.json productVersion is missing'}; Write-Output ([string]$m.productVersion)&quot;"
+      ConsoleToMSBuild="true"
+      StandardOutputImportance="Low">
+      <Output TaskParameter="ConsoleOutput" PropertyName="Version" />
+    </Exec>
+  </Target>
+</Project>
+
