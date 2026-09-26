@@ -8,7 +8,7 @@ The project provides real-time peer-to-peer voice, room-aware player handling, p
 
 The build identity is maintained in `version.json`.
 
-- MKW Voice Chat: 0.14.1
+- MKW Voice Chat: 0.14.2
 - Protocol: 1
 - Supported WiiCompiled base: 0.2.32
 
