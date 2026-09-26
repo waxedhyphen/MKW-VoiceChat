@@ -89,7 +89,7 @@ No proprietary game files are required by the signaling service.
 
 This repository is distributed under the GNU General Public License v3.0. The WiiCompiled integration is based on GPL-3.0-licensed WiiCompiled source.
 
-Third-party components retain their own licenses. The vendored RNNoise source is covered by the license in `third_party/rnnoise/COPYING`.
+Third-party components retain their own licenses. The vendored RNNoise source is covered by the license in `third_party/rnnoise/COPYING`. Additional attribution and redistribution notes are listed in `THIRD-PARTY-NOTICES.md`.
 
 ## Disclaimer
 

@@ -130,6 +130,8 @@ jobs:
           gh release create "$env:GITHUB_REF_NAME" `
             "dist/WiiCompiled-VoiceChat-Installer.exe" `
             "dist/RNNoise-LICENSE.txt" `
+            "LICENSE" `
+            "THIRD-PARTY-NOTICES.md" `
             "dist/mkwvc-release.json" `
             "dist/SHA256SUMS.txt" `
             --repo "$env:GITHUB_REPOSITORY" `
