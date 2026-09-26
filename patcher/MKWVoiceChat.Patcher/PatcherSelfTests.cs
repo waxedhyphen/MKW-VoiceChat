@@ -4,6 +4,38 @@ namespace MKWVoiceChat.Patcher;
 
 internal static class PatcherSelfTests
 {
+    public static void RunRenamedInstallerSourceAcceptance()
+    {
+        var root = Path.Combine(
+            Path.GetTempPath(),
+            "mkwvc-renamed-installer-test-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            Directory.CreateDirectory(root);
+            var renamed = Path.Combine(root, "WiiCompiled-VoiceChat-Installer (1).exe");
+            File.WriteAllBytes(renamed, [0x4d, 0x5a, 0x00, 0x00]);
+
+            var resolved = UserEntryPointInstaller.ValidateInstallerSourcePath(renamed);
+            if (!Path.GetFullPath(resolved).Equals(
+                    Path.GetFullPath(renamed),
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                throw new Exception("Renamed installer source path was not accepted.");
+            }
+        }
+        finally
+        {
+            try
+            {
+                if (Directory.Exists(root))
+                    Directory.Delete(root, recursive: true);
+            }
+            catch
+            {
+            }
+        }
+    }
+
     public static void RunBootstrapDiscovery()
     {
         var root = Path.Combine(
