@@ -134,5 +134,8 @@
       <Output TaskParameter="ConsoleOutput" PropertyName="Version" />
     </Exec>
   </Target>
+  <Target Name="PrepareRnnoiseModel" BeforeTargets="PrepareResourceNames">
+    <Exec Command="python &quot;$(MSBuildThisFileDirectory)..\..\tools\prepare_rnnoise_model.py&quot; --fetch &quot;$(MSBuildThisFileDirectory)..\..\third_party\rnnoise\src\rnnoise_data.c&quot;" />
+  </Target>
 </Project>
 

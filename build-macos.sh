@@ -51,6 +51,13 @@ for LIB in libimgui.a libglfw3.a libopus.a libspeexdsp.a libdatachannel.a libusr
   fi
 done
 
+if ! command -v python3 >/dev/null 2>&1; then
+  echo "Python 3 is required to prepare the pinned RNNoise model"
+  exit 1
+fi
+
+python3 "$ROOT/tools/prepare_rnnoise_model.py" --fetch "$ROOT/third_party/rnnoise/src/rnnoise_data.c"
+
 mkdir -p "$ROOT/bin" "$ROOT/obj/rnnoise"
 
 RNNOISE_OBJECTS=()

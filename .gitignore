@@ -10,3 +10,4 @@ vcpkg_installed/
 turn_server/.env
 signaling_worker/node_modules/
 signaling_worker/.wrangler/
+third_party/rnnoise/src/rnnoise_data.c

@@ -44,6 +44,7 @@ Requirements:
 - .NET 8 SDK
 - Visual Studio 2022 or newer with Desktop development with C++
 - CMake
+- Python 3.10 or newer
 - Git
 - vcpkg dependencies used by the native voice runtime
 

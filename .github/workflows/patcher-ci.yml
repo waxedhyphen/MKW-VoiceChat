@@ -64,6 +64,10 @@ jobs:
         with:
           dotnet-version: "8.0.x"
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
       - name: Validate signaling worker syntax
         run: node --check signaling_worker/src/index.js
 

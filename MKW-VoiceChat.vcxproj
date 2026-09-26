@@ -141,5 +141,8 @@
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />
+  <Target Name="PrepareRnnoiseModel" BeforeTargets="ClCompile">
+    <Exec Command="python &quot;$(ProjectDir)tools\prepare_rnnoise_model.py&quot; --fetch &quot;$(ProjectDir)third_party\rnnoise\src\rnnoise_data.c&quot;" />
+  </Target>
 </Project>
 
