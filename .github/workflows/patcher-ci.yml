@@ -74,6 +74,23 @@ jobs:
       - name: Build
         run: dotnet build patcher/MKWVoiceChat.Patcher/MKWVoiceChat.Patcher.csproj -c Release
 
+      - name: Verify installer RNNoise payload is self-contained
+        shell: pwsh
+        run: |
+          $root = Join-Path $env:RUNNER_TEMP "mkwvc-rnnoise-payload"
+          $build = Join-Path $env:RUNNER_TEMP "mkwvc-rnnoise-payload-build"
+          Remove-Item $root,$build -Recurse -Force -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Path $root | Out-Null
+          Copy-Item "third_party/rnnoise" (Join-Path $root "rnnoise") -Recurse
+          if (!(Test-Path (Join-Path $root "rnnoise/src/rnnoise_data.c"))) { throw "Generated RNNoise model missing before payload test." }
+          @"
+          cmake_minimum_required(VERSION 3.20)
+          project(mkwvc_payload C)
+          add_subdirectory(rnnoise)
+          "@ | Set-Content (Join-Path $root "CMakeLists.txt")
+          cmake -S $root -B $build
+          if ($LASTEXITCODE -ne 0) { throw "Installer RNNoise payload requires unavailable source-tree tooling." }
+
       - name: Verify central build version
         run: dotnet run --project patcher/MKWVoiceChat.Patcher/MKWVoiceChat.Patcher.csproj -c Release --no-build -- selftest-version
 
