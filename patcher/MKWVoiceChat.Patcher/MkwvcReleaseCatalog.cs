@@ -134,9 +134,8 @@ internal static class MkwvcReleaseCatalog
             Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
 
-        // Keep the canonical filename even in the unique temporary directory.
-        // UserEntryPointInstaller intentionally rejects renamed executables so
-        // an arbitrary program cannot masquerade as the installed updater.
+        // Keep the canonical filename in the unique temporary directory so
+        // update handoffs and diagnostics stay predictable.
         var destination = Path.Combine(
             root,
             "WiiCompiled-VoiceChat-Installer.exe");
@@ -182,7 +181,73 @@ internal static class MkwvcReleaseCatalog
             }
         }
 
+        CleanupPreviousUpdateDownloads(destination);
         return destination;
+    }
+
+    private static void CleanupPreviousUpdateDownloads(string keepInstallerPath)
+    {
+        try
+        {
+            var updateRoot = Path.Combine(
+                Path.GetTempPath(),
+                "MKWVoiceChat",
+                "updates");
+            var keepDirectory = Path.GetDirectoryName(
+                Path.GetFullPath(keepInstallerPath));
+            if (string.IsNullOrWhiteSpace(keepDirectory) ||
+                !Directory.Exists(updateRoot))
+            {
+                return;
+            }
+
+            foreach (var versionDirectory in Directory.EnumerateDirectories(updateRoot))
+            {
+                var fullVersionDirectory = Path.GetFullPath(versionDirectory);
+                var versionPrefix = fullVersionDirectory.TrimEnd(
+                        Path.DirectorySeparatorChar,
+                        Path.AltDirectorySeparatorChar)
+                    + Path.DirectorySeparatorChar;
+
+                if (!keepDirectory.StartsWith(
+                        versionPrefix,
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    TryDeleteDirectory(versionDirectory);
+                    continue;
+                }
+
+                foreach (var downloadDirectory in Directory.EnumerateDirectories(versionDirectory))
+                {
+                    if (Path.GetFullPath(downloadDirectory).Equals(
+                            keepDirectory,
+                            StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
+                    TryDeleteDirectory(downloadDirectory);
+                }
+            }
+        }
+        catch
+        {
+            // Temp cleanup must never block an otherwise valid update.
+        }
+    }
+
+    private static void TryDeleteDirectory(string path)
+    {
+        try
+        {
+            if (Directory.Exists(path))
+                Directory.Delete(path, recursive: true);
+        }
+        catch
+        {
+            // A file can still be locked briefly by an older process.
+            // The next successful update will try again.
+        }
     }
 
     public static int LaunchInstaller(
