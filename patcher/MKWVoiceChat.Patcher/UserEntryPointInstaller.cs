@@ -29,18 +29,7 @@ internal static class UserEntryPointInstaller
 
     public static void InstallCurrentInstallerAndShortcut(PatcherLayout layout)
     {
-        var source = Environment.ProcessPath;
-        if (string.IsNullOrWhiteSpace(source) || !File.Exists(source))
-            throw new InvalidOperationException(
-                "The running WiiCompiled Voicechat installer executable could not be located.");
-
-        var sourceName = Path.GetFileName(source);
-        if (!sourceName.Equals(InstalledInstallerFileName, StringComparison.OrdinalIgnoreCase) &&
-            !sourceName.Equals(LegacyInstallerFileName, StringComparison.OrdinalIgnoreCase))
-        {
-            throw new InvalidOperationException(
-                "Run the published WiiCompiled-VoiceChat-Installer.exe to install this build.");
-        }
+        var source = ValidateInstallerSourcePath(Environment.ProcessPath);
 
         var destination = InstalledInstallerPath(layout);
         Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
@@ -84,6 +73,14 @@ internal static class UserEntryPointInstaller
         }
 
         CreateDesktopShortcut(productExe, DesktopShortcutPath());
+    }
+
+    internal static string ValidateInstallerSourcePath(string? source)
+    {
+        if (string.IsNullOrWhiteSpace(source) || !File.Exists(source))
+            throw new InvalidOperationException(
+                "The running WiiCompiled Voicechat installer executable could not be located.");
+        return source;
     }
 
     public static void ValidateEmbeddedUpdaterResource()
