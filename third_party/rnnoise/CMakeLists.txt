@@ -1,10 +1,12 @@
-find_package(Python3 REQUIRED COMPONENTS Interpreter)
 set(MKWVC_RNNOISE_MODEL "${CMAKE_CURRENT_SOURCE_DIR}/src/rnnoise_data.c")
-execute_process(
-    COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/../../tools/prepare_rnnoise_model.py" --fetch "${MKWVC_RNNOISE_MODEL}"
-    RESULT_VARIABLE MKWVC_RNNOISE_PREPARE_RESULT)
-if(NOT MKWVC_RNNOISE_PREPARE_RESULT EQUAL 0)
-    message(FATAL_ERROR "Failed to prepare RNNoise model data")
+if(NOT EXISTS "${MKWVC_RNNOISE_MODEL}")
+    find_package(Python3 REQUIRED COMPONENTS Interpreter)
+    execute_process(
+        COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/../../tools/prepare_rnnoise_model.py" --fetch "${MKWVC_RNNOISE_MODEL}"
+        RESULT_VARIABLE MKWVC_RNNOISE_PREPARE_RESULT)
+    if(NOT MKWVC_RNNOISE_PREPARE_RESULT EQUAL 0)
+        message(FATAL_ERROR "Failed to prepare RNNoise model data")
+    endif()
 endif()
 
 add_library(mkwvc_rnnoise STATIC
