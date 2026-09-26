@@ -51,6 +51,7 @@ internal static class Program
                 }
 
                 UserEntryPointInstaller.ValidateEmbeddedUpdaterResource();
+                PatcherSelfTests.RunRenamedInstallerSourceAcceptance();
 
                 ConsoleUi.WriteLine(
                     $"Version metadata self-test OK: " +
