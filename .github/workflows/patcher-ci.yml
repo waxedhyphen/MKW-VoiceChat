@@ -1,0 +1,122 @@
+name: WiiCompiled Voicechat Installer CI
+
+on:
+  push:
+    paths:
+      - "patcher/**"
+      - "include/mkwvc/**"
+      - "src/**"
+      - "third_party/**"
+      - "tests/**"
+      - "tools/prepare_rnnoise_model.py"
+      - "signaling_worker/**"
+      - "version.json"
+      - ".github/workflows/patcher-ci.yml"
+      - ".github/workflows/release.yml"
+  pull_request:
+    paths:
+      - "patcher/**"
+      - "include/mkwvc/**"
+      - "src/**"
+      - "third_party/**"
+      - "tests/**"
+      - "tools/prepare_rnnoise_model.py"
+      - "signaling_worker/**"
+      - "version.json"
+      - ".github/workflows/patcher-ci.yml"
+      - ".github/workflows/release.yml"
+  workflow_dispatch:
+
+jobs:
+  audio-regression:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Download pinned public speech fixture
+        shell: python
+        run: |
+          import hashlib
+          import urllib.request
+          from pathlib import Path
+          data=urllib.request.urlopen("https://raw.githubusercontent.com/ggml-org/whisper.cpp/d09f61a708f3487afa956ff578e60eae5e7a233c/samples/jfk.wav",timeout=60).read()
+          assert hashlib.sha256(data).hexdigest()=="59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e"
+          Path("tests/jfk.wav").write_bytes(data)
+      - name: Configure native audio regression
+        run: cmake -S tests -B audio-tests -DMKWVC_TEST_SPEECH=${{ github.workspace }}/tests/jfk.wav -DCMAKE_BUILD_TYPE=Release
+      - name: Build native audio regression
+        run: cmake --build audio-tests --config Release --parallel 2
+      - name: Verify noise reduction and speech preservation
+        run: ctest --test-dir audio-tests -C Release --output-on-failure
+
+  build-windows:
+    needs: audio-regression
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Validate signaling worker syntax
+        run: node --check signaling_worker/src/index.js
+
+      - name: Build
+        run: dotnet build patcher/MKWVoiceChat.Patcher/MKWVoiceChat.Patcher.csproj -c Release
+
+      - name: Verify central build version
+        run: dotnet run --project patcher/MKWVoiceChat.Patcher/MKWVoiceChat.Patcher.csproj -c Release --no-build -- selftest-version
+
+      - name: Verify bootstrap updater
+        shell: pwsh
+        run: |
+          & "patcher/MKWVoiceChat.Patcher/obj/embedded-updater/Release/MKWVoiceChat-Updater.exe" --selftest
+          if ($LASTEXITCODE -ne 0) { throw "Bootstrap updater self-test failed." }
+
+      - name: Validate central version metadata
+        shell: pwsh
+        run: |
+          $meta = Get-Content "version.json" -Raw | ConvertFrom-Json
+          if ([int]$meta.schemaVersion -ne 1) { throw "Unsupported version.json schema." }
+          if ([string]$meta.productVersion -notmatch '^\d+\.\d+\.\d+$') { throw "Invalid productVersion." }
+          if ([string]$meta.patchRevision -notmatch '^[A-Za-z0-9._-]+$') { throw "Invalid patchRevision." }
+          if ([int]$meta.protocolVersion -lt 1) { throw "Invalid protocolVersion." }
+          if ([string]$meta.wiiCompiledVersion -notmatch '^\d+\.\d+\.\d+$') { throw "Invalid wiiCompiledVersion." }
+
+          $header = Get-Content "patcher/payload/runtime/include/retro_rewind_voice_bridge.h" -Raw
+          foreach ($token in @(
+            '@MKWVC_PRODUCT_VERSION@',
+            '@MKWVC_PATCH_REVISION@',
+            '@MKWVC_PROTOCOL_VERSION@',
+            '@MKWVC_WIICOMPILED_VERSION@'
+          )) {
+            if (!$header.Contains($token)) { throw "Runtime version token missing: $token" }
+          }
+
+      - name: Verify bootstrap discovery without WiiCompiled
+        run: dotnet run --project patcher/MKWVoiceChat.Patcher/MKWVoiceChat.Patcher.csproj -c Release --no-build -- selftest-bootstrap
+
+      - name: Verify patch against configured official WiiCompiled base
+        shell: pwsh
+        run: |
+          $meta = Get-Content "version.json" -Raw | ConvertFrom-Json
+          $wii = [string]$meta.wiiCompiledVersion
+          git clone --depth 1 --branch "v$wii" https://github.com/patchzyy/Wiicompiled.git upstream-wiicompiled
+          dotnet run --project patcher/MKWVoiceChat.Patcher/MKWVoiceChat.Patcher.csproj -c Release --no-build -- selftest-patch upstream-wiicompiled
+          git -C upstream-wiicompiled diff --exit-code
+
+      - name: Publish single-file installer
+        run: dotnet publish patcher/MKWVoiceChat.Patcher/MKWVoiceChat.Patcher.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o artifacts/patcher
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: WiiCompiled-VoiceChat-Installer-win-x64
+          path: |
+            artifacts/patcher/WiiCompiled-VoiceChat-Installer.exe
+            artifacts/patcher/RNNoise-LICENSE.txt
