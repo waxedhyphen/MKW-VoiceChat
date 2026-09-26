@@ -20,6 +20,7 @@ internal static class Program
 
     public static async Task<int> Main(string[] args)
     {
+        UpdaterLog.Start(args);
         try
         {
             if (args.Any(value =>
@@ -33,6 +34,7 @@ internal static class Program
             var waitPid = ParseWaitPid(args);
             if (waitPid > 0)
             {
+                UpdaterLog.Write("WAIT", $"Waiting for game process {waitPid} to close.");
                 Console.WriteLine($"Waiting for game process {waitPid} to close...");
                 WaitForProcessExit(waitPid);
             }
@@ -46,13 +48,19 @@ internal static class Program
             http.DefaultRequestHeaders.Accept.Add(
                 new MediaTypeWithQualityHeaderValue("application/json"));
 
+            UpdaterLog.Write("CHECK", "Checking latest MKW Voice Chat release.");
             Console.WriteLine("Checking latest MKW Voice Chat release...");
             var manifest = await FetchManifestAsync(http);
+            UpdaterLog.Write("CHECK", $"Latest version={manifest.Version}");
 
+            UpdaterLog.Write("DOWNLOAD", $"Downloading MKW Voice Chat {manifest.Version}.");
             Console.WriteLine(
                 $"Downloading MKW Voice Chat {manifest.Version}...");
             var installer = await DownloadInstallerAsync(http, manifest);
+            UpdaterLog.Write("DOWNLOAD", $"Verified installer={installer}");
+            CleanupPreviousUpdateDownloads(installer);
 
+            UpdaterLog.Write("HANDOFF", "Starting MKW Voice Chat installer.");
             Console.WriteLine("Starting MKW Voice Chat installer...");
             var start = new ProcessStartInfo
             {
@@ -72,8 +80,12 @@ internal static class Program
         }
         catch (Exception ex)
         {
+            UpdaterLog.Exception("UPDATER", ex);
+            var logSuffix = string.IsNullOrWhiteSpace(UpdaterLog.CurrentPath)
+                ? ""
+                : "\n\nLog: " + UpdaterLog.CurrentPath;
             var message =
-                "MKW Voice Chat updater failed.\n\n" + ex.Message;
+                "MKW Voice Chat updater failed.\n\n" + ex.Message + logSuffix;
             Console.Error.WriteLine(message);
             ShowError(message);
             return 1;
@@ -308,6 +320,71 @@ internal static class Program
         }
 
         return destination;
+    }
+
+    private static void CleanupPreviousUpdateDownloads(string keepInstallerPath)
+    {
+        try
+        {
+            var updateRoot = Path.Combine(
+                Path.GetTempPath(),
+                "MKWVoiceChat",
+                "updates");
+            var keepDirectory = Path.GetDirectoryName(
+                Path.GetFullPath(keepInstallerPath));
+            if (string.IsNullOrWhiteSpace(keepDirectory) ||
+                !Directory.Exists(updateRoot))
+            {
+                return;
+            }
+
+            foreach (var versionDirectory in Directory.EnumerateDirectories(updateRoot))
+            {
+                var fullVersionDirectory = Path.GetFullPath(versionDirectory);
+                var versionPrefix = fullVersionDirectory.TrimEnd(
+                        Path.DirectorySeparatorChar,
+                        Path.AltDirectorySeparatorChar)
+                    + Path.DirectorySeparatorChar;
+
+                if (!keepDirectory.StartsWith(
+                        versionPrefix,
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    TryDeleteDirectory(versionDirectory);
+                    continue;
+                }
+
+                foreach (var downloadDirectory in Directory.EnumerateDirectories(versionDirectory))
+                {
+                    if (Path.GetFullPath(downloadDirectory).Equals(
+                            keepDirectory,
+                            StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
+                    TryDeleteDirectory(downloadDirectory);
+                }
+            }
+        }
+        catch
+        {
+            // Temp cleanup must never block an otherwise valid update.
+        }
+    }
+
+    private static void TryDeleteDirectory(string path)
+    {
+        try
+        {
+            if (Directory.Exists(path))
+                Directory.Delete(path, recursive: true);
+        }
+        catch
+        {
+            // A file can still be locked briefly by an older process.
+            // The next successful update will try again.
+        }
     }
 
     private static string Sha256File(string path)
