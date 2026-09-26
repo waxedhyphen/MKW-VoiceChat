@@ -1,0 +1,12 @@
+build/
+out/
+bin/
+obj/
+vcpkg_installed/
+.vs/
+.idea/
+.DS_Store
+.tools/
+turn_server/.env
+signaling_worker/node_modules/
+signaling_worker/.wrangler/

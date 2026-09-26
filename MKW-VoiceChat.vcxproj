@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>17.0</VCProjectVersion>
+    <Keyword>Win32Proj</Keyword>
+    <ProjectGuid>{A7BD6B2A-34B4-4C8D-8E59-1D1D3B7CA6F4}</ProjectGuid>
+    <RootNamespace>MKWVoiceChat</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <VcpkgEnabled>true</VcpkgEnabled>
+    <VcpkgEnableManifest>true</VcpkgEnableManifest>
+    <VcpkgManifestInstall>true</VcpkgManifestInstall>
+    <VcpkgTriplet>x64-windows</VcpkgTriplet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings" />
+  <ImportGroup Label="Shared" />
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <OutDir>$(SolutionDir)bin\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)obj\$(Configuration)\</IntDir>
+    <TargetName>mkw_voicechat</TargetName>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level4</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <AdditionalIncludeDirectories>$(ProjectDir)include;$(ProjectDir)third_party\rnnoise\include;$(ProjectDir)vcpkg_installed\x64-windows\include;$(ProjectDir)vcpkg_installed\x64-windows\include\opus;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_DEBUG;MKWVC_HAS_ICE=1;GLFW_DLL;NOMINMAX;WIN32_LEAN_AND_MEAN;_CRT_SECURE_NO_WARNINGS;_USE_MATH_DEFINES;RNNOISE_BUILD;DISABLE_DEBUG_FLOAT;OPUS_X86_MAY_HAVE_SSE;OPUS_X86_MAY_HAVE_SSE2;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>$(ProjectDir)vcpkg_installed\x64-windows\debug\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>speexdsp.lib;opengl32.lib;ws2_32.lib;ole32.lib;user32.lib;gdi32.lib;shell32.lib;psapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level4</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <Optimization>MaxSpeed</Optimization>
+      <AdditionalIncludeDirectories>$(ProjectDir)include;$(ProjectDir)third_party\rnnoise\include;$(ProjectDir)vcpkg_installed\x64-windows\include;$(ProjectDir)vcpkg_installed\x64-windows\include\opus;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>NDEBUG;MKWVC_HAS_ICE=1;GLFW_DLL;NOMINMAX;WIN32_LEAN_AND_MEAN;_CRT_SECURE_NO_WARNINGS;_USE_MATH_DEFINES;RNNOISE_BUILD;DISABLE_DEBUG_FLOAT;OPUS_X86_MAY_HAVE_SSE;OPUS_X86_MAY_HAVE_SSE2;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>$(ProjectDir)vcpkg_installed\x64-windows\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>speexdsp.lib;opengl32.lib;ws2_32.lib;ole32.lib;user32.lib;gdi32.lib;shell32.lib;psapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="third_party\rnnoise\src\celt_lpc.c"><CompileAs>CompileAsC</CompileAs><LanguageStandard_C>stdc11</LanguageStandard_C></ClCompile>
+    <ClCompile Include="third_party\rnnoise\src\denoise.c"><CompileAs>CompileAsC</CompileAs><LanguageStandard_C>stdc11</LanguageStandard_C></ClCompile>
+    <ClCompile Include="third_party\rnnoise\src\kiss_fft.c"><CompileAs>CompileAsC</CompileAs><LanguageStandard_C>stdc11</LanguageStandard_C></ClCompile>
+    <ClCompile Include="third_party\rnnoise\src\nnet.c"><CompileAs>CompileAsC</CompileAs><LanguageStandard_C>stdc11</LanguageStandard_C></ClCompile>
+    <ClCompile Include="third_party\rnnoise\src\nnet_default.c"><CompileAs>CompileAsC</CompileAs><LanguageStandard_C>stdc11</LanguageStandard_C></ClCompile>
+    <ClCompile Include="third_party\rnnoise\src\parse_lpcnet_weights.c"><CompileAs>CompileAsC</CompileAs><LanguageStandard_C>stdc11</LanguageStandard_C></ClCompile>
+    <ClCompile Include="third_party\rnnoise\src\pitch.c"><CompileAs>CompileAsC</CompileAs><LanguageStandard_C>stdc11</LanguageStandard_C></ClCompile>
+    <ClCompile Include="third_party\rnnoise\src\rnn.c"><CompileAs>CompileAsC</CompileAs><LanguageStandard_C>stdc11</LanguageStandard_C></ClCompile>
+    <ClCompile Include="third_party\rnnoise\src\rnnoise_data.c"><CompileAs>CompileAsC</CompileAs><LanguageStandard_C>stdc11</LanguageStandard_C><DisableSpecificWarnings>4305;%(DisableSpecificWarnings)</DisableSpecificWarnings></ClCompile>
+    <ClCompile Include="third_party\rnnoise\src\rnnoise_tables.c"><CompileAs>CompileAsC</CompileAs><LanguageStandard_C>stdc11</LanguageStandard_C></ClCompile>
+    <ClCompile Include="src\AdaptiveJitterBuffer.cpp" />
+    <ClCompile Include="src\AudioProcessor.cpp" />
+    <ClCompile Include="src\AppConfig.cpp" />
+    <ClCompile Include="src\AudioEngine.cpp" />
+    <ClCompile Include="src\IcePeerTransport.cpp" />
+    <ClCompile Include="src\IceSignal.cpp" />
+    <ClCompile Include="src\LoadTest.cpp" />
+    <ClCompile Include="src\MicrophoneTest.cpp" />
+    <ClCompile Include="src\NetworkSimulator.cpp" />
+    <ClCompile Include="src\OpusCodec.cpp" />
+    <ClCompile Include="src\SignalingClient.cpp" />
+    <ClCompile Include="src\UdpVoiceTransport.cpp" />
+    <ClCompile Include="src\VoiceClient.cpp" />
+    <ClCompile Include="src\main.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="include\mkwvc\AdaptiveJitterBuffer.hpp" />
+    <ClInclude Include="include\mkwvc\AudioProcessor.hpp" />
+    <ClInclude Include="include\mkwvc\AppConfig.hpp" />
+    <ClInclude Include="include\mkwvc\AudioEngine.hpp" />
+    <ClInclude Include="include\mkwvc\IcePeerTransport.hpp" />
+    <ClInclude Include="include\mkwvc\IceSignal.hpp" />
+    <ClInclude Include="include\mkwvc\LoadTest.hpp" />
+    <ClInclude Include="include\mkwvc\MicrophoneTest.hpp" />
+    <ClInclude Include="include\mkwvc\NetworkSimulator.hpp" />
+    <ClInclude Include="include\mkwvc\OpusCodec.hpp" />
+    <ClInclude Include="include\mkwvc\SpscRingBuffer.hpp" />
+    <ClInclude Include="include\mkwvc\SignalingClient.hpp" />
+    <ClInclude Include="include\mkwvc\UdpVoiceTransport.hpp" />
+    <ClInclude Include="include\mkwvc\VoiceClient.hpp" />
+    <ClInclude Include="include\mkwvc\VoiceFormat.hpp" />
+    <ClInclude Include="include\mkwvc\VoiceTransport.hpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="vcpkg.json" />
+    <Content Include="third_party\rnnoise\COPYING"><Link>RNNoise-LICENSE.txt</Link><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets" />
+</Project>
+

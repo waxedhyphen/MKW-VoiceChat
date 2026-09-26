@@ -1,0 +1,23 @@
+{
+  "name": "mkw-voicechat",
+  "version-string": "0.8.0",
+  "dependencies": [
+    {
+      "name": "imgui",
+      "features": [
+        "glfw-binding",
+        "opengl3-binding"
+      ]
+    },
+    {
+      "name": "libdatachannel",
+      "default-features": false,
+      "features": [
+        "ws"
+      ]
+    },
+    "miniaudio",
+    "opus",
+    "speexdsp"
+  ]
+}
