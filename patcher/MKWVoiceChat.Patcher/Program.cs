@@ -10,9 +10,12 @@ internal static class Program
             return 1;
         }
 
+        InstallerLog.Start(args);
+
         var command = args.Length == 0
             ? ConsoleUi.ChooseInstallerAction()
             : args[0].Trim().ToLowerInvariant();
+        InstallerLog.Command(command);
 
         if (command == "exit")
             return 0;
@@ -27,6 +30,7 @@ internal static class Program
             }
             catch (Exception ex)
             {
+                InstallerLog.Exception("SELFTEST-BOOTSTRAP", ex);
                 ConsoleUi.WriteError("Bootstrap discovery self-test failed: " + ex.Message);
                 return 1;
             }
@@ -64,6 +68,7 @@ internal static class Program
             }
             catch (Exception ex)
             {
+                InstallerLog.Exception("SELFTEST-VERSION", ex);
                 ConsoleUi.WriteError(
                     "Version metadata self-test failed: " + ex.Message);
                 return 1;
@@ -98,6 +103,7 @@ internal static class Program
             }
             catch (Exception ex)
             {
+                InstallerLog.Exception("SELFTEST-PATCH", ex);
                 ConsoleUi.WriteError("Patch compatibility test failed: " + ex.Message);
                 return 1;
             }
@@ -134,7 +140,10 @@ internal static class Program
         }
         catch (Exception ex)
         {
+            InstallerLog.Exception("INSTALLER", ex);
             ConsoleUi.WriteError("Installer failed: " + ex.Message);
+            if (!string.IsNullOrWhiteSpace(InstallerLog.CurrentPath))
+                ConsoleUi.WriteError("Log: " + InstallerLog.CurrentPath);
             return 1;
         }
 
@@ -229,6 +238,7 @@ internal static class Program
         }
         catch (Exception ex)
         {
+            InstallerLog.Exception("INSTALLER", ex);
             ConsoleUi.WriteError("Installer failed: " + ex.Message);
             return 1;
         }
