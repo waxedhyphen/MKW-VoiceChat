@@ -30,6 +30,7 @@ internal static class ConsoleUi
 
     public static void BeginPhase(string message)
     {
+        InstallerLog.Write("PHASE", message);
         lock (Gate)
         {
             _lastPercent = -1;
@@ -54,6 +55,7 @@ internal static class ConsoleUi
             _lastPercent = percent;
             _lastMessage = message;
 
+            InstallerLog.Write("PROGRESS", $"{percent}% {message}");
             RenderProgressLocked(percent, message);
         }
     }
@@ -102,6 +104,7 @@ internal static class ConsoleUi
 
     public static void WriteLine(string text)
     {
+        InstallerLog.Write("INFO", text);
         lock (Gate)
         {
             FinishProgressLineLocked();
@@ -111,6 +114,7 @@ internal static class ConsoleUi
 
     public static void WriteError(string text)
     {
+        InstallerLog.Write("ERROR", text);
         lock (Gate)
         {
             FinishProgressLineLocked();
