@@ -31,8 +31,11 @@ internal static class ProcessUtil
             CreateNoWindow = true
         };
 
-        foreach (var argument in arguments)
+        var argumentList = arguments.ToList();
+        foreach (var argument in argumentList)
             start.ArgumentList.Add(argument);
+
+        InstallerLog.ProcessStart(fileName, argumentList, workingDirectory);
 
         if (environment is not null)
         {
@@ -50,16 +53,19 @@ internal static class ProcessUtil
             process.StandardOutput,
             stdout,
             echoOutput ? Console.Out : null,
-            stdoutLine);
+            stdoutLine,
+            "CHILD-STDOUT");
         var readStderr = ReadLinesAsync(
             process.StandardError,
             stderr,
             echoOutput ? Console.Error : null,
-            stderrLine);
+            stderrLine,
+            "CHILD-STDERR");
 
         await process.WaitForExitAsync(cancellationToken);
         await Task.WhenAll(readStdout, readStderr);
 
+        InstallerLog.ProcessExit(fileName, process.ExitCode);
         return new(
             process.ExitCode,
             string.Join(Environment.NewLine, stdout),
@@ -70,12 +76,14 @@ internal static class ProcessUtil
         StreamReader reader,
         List<string> destination,
         TextWriter? echo,
-        Action<string>? observer)
+        Action<string>? observer,
+        string logScope)
     {
         string? line;
         while ((line = await reader.ReadLineAsync()) is not null)
         {
             destination.Add(line);
+            InstallerLog.Write(logScope, line);
             observer?.Invoke(line);
             if (echo is not null)
                 await echo.WriteLineAsync(line);
