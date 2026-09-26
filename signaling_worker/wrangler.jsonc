@@ -1,0 +1,65 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "mkw-voicechat-signaling",
+  "main": "src/index.js",
+  "compatibility_date": "2026-09-19",
+  "workers_dev": true,
+  "cache": {
+    "enabled": false
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "SIGNALING_HUB",
+        "class_name": "SignalingHub"
+      }
+    ]
+  },
+  "exports": {
+    "SignalingHub": {
+      "type": "durable-object",
+      "storage": "sqlite"
+    }
+  },
+  "ratelimits": [
+    {
+      "name": "CONNECTION_RATE_LIMITER",
+      "namespace_id": "741001",
+      "simple": {
+        "limit": 64,
+        "period": 60
+      }
+    },
+    {
+      "name": "ROOM_ACTION_RATE_LIMITER",
+      "namespace_id": "741002",
+      "simple": {
+        "limit": 96,
+        "period": 60
+      }
+    },
+    {
+      "name": "MESSAGE_RATE_LIMITER",
+      "namespace_id": "741004",
+      "simple": {
+        "limit": 512,
+        "period": 60
+      }
+    },
+    {
+      "name": "SIGNAL_RATE_LIMITER",
+      "namespace_id": "741003",
+      "simple": {
+        "limit": 384,
+        "period": 60
+      }
+    }
+  ],
+  "vars": {
+    "MKWVC_TURN_HOST": "",
+    "MKWVC_TURN_PORT": "3478",
+    "MKWVC_TURN_TTL": "3600",
+    "MKWVC_TURN_URLS": "",
+    "MKWVC_DEBUG_LOGS": "1"
+  }
+}
