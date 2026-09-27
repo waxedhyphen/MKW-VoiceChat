@@ -14,7 +14,7 @@ internal sealed record ReleaseManifest(
 internal static class Program
 {
     private const string ManifestUrl =
-        "https://github.com/waxedhyphen/MKW-VoiceChat/releases/latest/download/mkwvc-release.json";
+        "https://github.com/zurasaaa/MKW-VoiceChat/releases/latest/download/mkwvc-release.json";
     private const long MinimumInstallerBytes = 1024 * 1024;
     private const long MaximumInstallerBytes = 512L * 1024 * 1024;
 
@@ -234,7 +234,7 @@ internal static class Program
                 "github.com",
                 StringComparison.OrdinalIgnoreCase) ||
             !uri.AbsolutePath.StartsWith(
-                "/waxedhyphen/MKW-VoiceChat/releases/",
+                "/zurasaaa/MKW-VoiceChat/releases/",
                 StringComparison.OrdinalIgnoreCase) ||
             !uri.AbsolutePath.EndsWith(
                 "/WiiCompiled-VoiceChat-Installer.exe",
@@ -402,7 +402,7 @@ internal static class Program
             {
               "schemaVersion": 1,
               "version": "1.2.3",
-              "installerUrl": "https://github.com/waxedhyphen/MKW-VoiceChat/releases/latest/download/WiiCompiled-VoiceChat-Installer.exe",
+              "installerUrl": "https://github.com/zurasaaa/MKW-VoiceChat/releases/latest/download/WiiCompiled-VoiceChat-Installer.exe",
               "installerSha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
             }
             """;
