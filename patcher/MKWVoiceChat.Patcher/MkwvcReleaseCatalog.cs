@@ -60,7 +60,7 @@ internal sealed record MkwvcReleaseStatus(
 internal static class MkwvcReleaseCatalog
 {
     public const string ManifestUrl =
-        "https://github.com/waxedhyphen/MKW-VoiceChat/releases/latest/download/mkwvc-release.json";
+        "https://github.com/zurasaaa/MKW-VoiceChat/releases/latest/download/mkwvc-release.json";
 
     public static int CurrentProtocol =>
         BuildVersion.ProtocolVersion;
@@ -360,7 +360,7 @@ internal static class MkwvcReleaseCatalog
                 "github.com",
                 StringComparison.OrdinalIgnoreCase) ||
             !installerUri.AbsolutePath.StartsWith(
-                "/waxedhyphen/MKW-VoiceChat/releases/",
+                "/zurasaaa/MKW-VoiceChat/releases/",
                 StringComparison.OrdinalIgnoreCase))
         {
             throw new InvalidDataException(
