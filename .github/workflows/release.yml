@@ -131,7 +131,7 @@ jobs:
           }
 
           $manifest | ConvertTo-Json | Set-Content "dist/mkwvc-release.json" -Encoding utf8
-          "$sha  WiiCompiled-VoiceChat-Installer.exe" | Set-Content "dist/SHA256SUMS.txt" -Encoding ascii
+          Compress-Archive -Path "LICENSE","THIRD-PARTY-NOTICES.md","dist/RNNoise-LICENSE.txt" -DestinationPath "dist/Licenses.zip" -Force
 
           Write-Host "Release version: $env:MKWVC_RELEASE_VERSION"
           Write-Host "Patch revision: $env:MKWVC_PATCH_REVISION"
@@ -146,11 +146,8 @@ jobs:
         run: |
           gh release create "$env:GITHUB_REF_NAME" `
             "dist/WiiCompiled-VoiceChat-Installer.exe" `
-            "dist/RNNoise-LICENSE.txt" `
-            "LICENSE" `
-            "THIRD-PARTY-NOTICES.md" `
             "dist/mkwvc-release.json" `
-            "dist/SHA256SUMS.txt" `
+            "dist/Licenses.zip" `
             --repo "$env:GITHUB_REPOSITORY" `
             --verify-tag `
             --latest `

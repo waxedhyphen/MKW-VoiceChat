@@ -14,7 +14,7 @@ WiiCompiled is licensed under GPL v3.0. This repository does not redistribute Ma
 
 RNNoise source is vendored under `third_party/rnnoise/`.
 
-The complete RNNoise redistribution terms and copyright notices are preserved in `third_party/rnnoise/COPYING`. Release builds also publish that license text as `RNNoise-LICENSE.txt`.
+The complete RNNoise redistribution terms and copyright notices are preserved in `third_party/rnnoise/COPYING`. Release builds include that license text as `RNNoise-LICENSE.txt` in `Licenses.zip`.
 
 ## Other dependencies
 

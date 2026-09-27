@@ -121,7 +121,7 @@ ctest --test-dir audio-tests -C Release --output-on-failure
 
 ### Releases
 
-Push a tag `vX.Y.Z` matching `productVersion` in `version.json`. The release workflow runs all tests, builds the installer and publishes it together with `mkwvc-release.json` and `SHA256SUMS.txt`.
+Push a tag `vX.Y.Z` matching `productVersion` in `version.json`. The release workflow runs all tests, builds the installer and publishes it together with `mkwvc-release.json` and `Licenses.zip`.
 
 ## Server components
 
