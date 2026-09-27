@@ -1803,9 +1803,9 @@ void ServiceRoomLookup() noexcept {
         mkwvc::setEmbeddedVoiceRuntimeBlocked(
             waitingForInitialCheck || updateRequired,
             waitingForInitialCheck
-                ? "Checking for MKW Voice Chat updates..."
+                ? "Checking for MKW VoiceChat updates..."
                 : (updateRequired
-                    ? "MKW Voice Chat update required"
+                    ? "MKW VoiceChat update required"
                     : std::string{}));
 
         const IdentitySnapshot identity=Snapshot();
@@ -1914,7 +1914,7 @@ bool LaunchInstalledUpdater() noexcept {
             auto& state=ReleaseState();
             std::lock_guard<std::mutex> lock(state.mutex);
             state.snapshot.status=
-                "Installed bootstrap updater is missing; reinstall MKW Voice Chat";
+                "Installed bootstrap updater is missing; reinstall MKW VoiceChat";
             return false;
         }
 

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "productVersion": "0.14.3",
-  "patchRevision": "voice-bridge-v30-rnnoise-stage4p",
+  "productVersion": "0.14.4",
+  "patchRevision": "voice-bridge-v31",
   "protocolVersion": 1,
   "wiiCompiledVersion": "0.2.32"
 }

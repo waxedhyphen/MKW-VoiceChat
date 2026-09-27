@@ -57,7 +57,7 @@ internal static class UserEntryPointInstaller
             "RetroRewind.exe");
         if (!File.Exists(productExe))
             throw new FileNotFoundException(
-                "The compiled WiiCompiled Voicechat build is missing.",
+                "The compiled Wiicompiled (Voicechat) build is missing.",
                 productExe);
 
         RemoveLegacyShortcut();
@@ -79,7 +79,7 @@ internal static class UserEntryPointInstaller
     {
         if (string.IsNullOrWhiteSpace(source) || !File.Exists(source))
             throw new InvalidOperationException(
-                "The running WiiCompiled Voicechat installer executable could not be located.");
+                "The running Wiicompiled (Voicechat) installer executable could not be located.");
         return source;
     }
 
@@ -88,11 +88,11 @@ internal static class UserEntryPointInstaller
         using var stream = Assembly.GetExecutingAssembly()
             .GetManifestResourceStream(UpdaterResourceName)
             ?? throw new InvalidDataException(
-                "Embedded MKW Voice Chat updater is missing.");
+                "Embedded MKW VoiceChat updater is missing.");
 
         if (stream.Length < 64 * 1024)
             throw new InvalidDataException(
-                "Embedded MKW Voice Chat updater is unexpectedly small.");
+                "Embedded MKW VoiceChat updater is unexpectedly small.");
 
         Span<byte> header = stackalloc byte[2];
         if (stream.Read(header) != header.Length ||
@@ -100,7 +100,7 @@ internal static class UserEntryPointInstaller
             header[1] != (byte)'Z')
         {
             throw new InvalidDataException(
-                "Embedded MKW Voice Chat updater is not a Windows executable.");
+                "Embedded MKW VoiceChat updater is not a Windows executable.");
         }
     }
 
@@ -117,7 +117,7 @@ internal static class UserEntryPointInstaller
             using var input = Assembly.GetExecutingAssembly()
                 .GetManifestResourceStream(UpdaterResourceName)
                 ?? throw new InvalidDataException(
-                    "Embedded MKW Voice Chat updater is missing.");
+                    "Embedded MKW VoiceChat updater is missing.");
             using (var output = new FileStream(
                 temp,
                 FileMode.CreateNew,

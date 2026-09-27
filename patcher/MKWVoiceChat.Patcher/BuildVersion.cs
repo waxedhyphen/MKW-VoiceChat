@@ -45,16 +45,16 @@ internal static class BuildVersion
     {
         using var stream = typeof(BuildVersion).Assembly.GetManifestResourceStream(ResourceName)
             ?? throw new InvalidDataException(
-                "Embedded MKW Voice Chat version metadata is missing.");
+                "Embedded MKW VoiceChat version metadata is missing.");
         var document = JsonSerializer.Deserialize<BuildVersionDocument>(
             stream,
             JsonUtil.Options)
             ?? throw new InvalidDataException(
-                "Embedded MKW Voice Chat version metadata is empty.");
+                "Embedded MKW VoiceChat version metadata is empty.");
 
         if (document.SchemaVersion != 1)
             throw new InvalidDataException(
-                $"Unsupported MKW Voice Chat version metadata schema {document.SchemaVersion}.");
+                $"Unsupported MKW VoiceChat version metadata schema {document.SchemaVersion}.");
 
         var productVersion = ParseTriplet(
             document.ProductVersion,
@@ -65,7 +65,7 @@ internal static class BuildVersion
 
         if (document.ProtocolVersion < 1)
             throw new InvalidDataException(
-                "MKW Voice Chat protocolVersion must be at least 1.");
+                "MKW VoiceChat protocolVersion must be at least 1.");
 
         if (string.IsNullOrWhiteSpace(document.PatchRevision) ||
             document.PatchRevision.Any(ch =>
@@ -73,7 +73,7 @@ internal static class BuildVersion
                   ch is '-' or '_' or '.')))
         {
             throw new InvalidDataException(
-                "MKW Voice Chat patchRevision contains invalid characters.");
+                "MKW VoiceChat patchRevision contains invalid characters.");
         }
 
         return new(
@@ -96,7 +96,7 @@ internal static class BuildVersion
             !Version.TryParse(value, out var parsed))
         {
             throw new InvalidDataException(
-                $"MKW Voice Chat {field} must be a numeric x.y.z version.");
+                $"MKW VoiceChat {field} must be a numeric x.y.z version.");
         }
 
         return parsed;

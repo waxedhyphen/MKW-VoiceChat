@@ -142,7 +142,7 @@ internal static class PatcherPaths
 
         throw new DirectoryNotFoundException(
             "Retro Rewind could not be found from Wheel Wizard's configuration. " +
-            "Install/launch Retro Rewind through Wheel Wizard once before running MKW Voice Chat.");
+            "Install/launch Retro Rewind through Wheel Wizard once before running MKW VoiceChat.");
     }
 
     private static string NormalizeRetroRoot(string root)

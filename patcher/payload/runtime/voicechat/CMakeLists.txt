@@ -13,7 +13,7 @@ endif()
 
 set(MKWVC_DEP_ROOT "$ENV{MKWVC_DEP_ROOT}")
 if(NOT MKWVC_DEP_ROOT)
-    message(FATAL_ERROR "MKWVC_DEP_ROOT is not set; run the WiiCompiled Voicechat installer")
+    message(FATAL_ERROR "MKWVC_DEP_ROOT is not set; run the Wiicompiled (Voicechat) installer")
 endif()
 
 set(MKWVC_OPUS_DIR "${MKWVC_DEP_ROOT}/opus")

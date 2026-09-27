@@ -48,20 +48,20 @@ internal static class Program
             http.DefaultRequestHeaders.Accept.Add(
                 new MediaTypeWithQualityHeaderValue("application/json"));
 
-            UpdaterLog.Write("CHECK", "Checking latest MKW Voice Chat release.");
-            Console.WriteLine("Checking latest MKW Voice Chat release...");
+            UpdaterLog.Write("CHECK", "Checking latest MKW VoiceChat release.");
+            Console.WriteLine("Checking latest MKW VoiceChat release...");
             var manifest = await FetchManifestAsync(http);
             UpdaterLog.Write("CHECK", $"Latest version={manifest.Version}");
 
-            UpdaterLog.Write("DOWNLOAD", $"Downloading MKW Voice Chat {manifest.Version}.");
+            UpdaterLog.Write("DOWNLOAD", $"Downloading MKW VoiceChat {manifest.Version}.");
             Console.WriteLine(
-                $"Downloading MKW Voice Chat {manifest.Version}...");
+                $"Downloading MKW VoiceChat {manifest.Version}...");
             var installer = await DownloadInstallerAsync(http, manifest);
             UpdaterLog.Write("DOWNLOAD", $"Verified installer={installer}");
             CleanupPreviousUpdateDownloads(installer);
 
-            UpdaterLog.Write("HANDOFF", "Starting MKW Voice Chat installer.");
-            Console.WriteLine("Starting MKW Voice Chat installer...");
+            UpdaterLog.Write("HANDOFF", "Starting MKW VoiceChat installer.");
+            Console.WriteLine("Starting MKW VoiceChat installer...");
             var start = new ProcessStartInfo
             {
                 FileName = installer,
@@ -74,7 +74,7 @@ internal static class Program
 
             _ = Process.Start(start)
                 ?? throw new InvalidOperationException(
-                    "Could not start the MKW Voice Chat installer.");
+                    "Could not start the MKW VoiceChat installer.");
 
             return 0;
         }
@@ -85,7 +85,7 @@ internal static class Program
                 ? ""
                 : "\n\nLog: " + UpdaterLog.CurrentPath;
             var message =
-                "MKW Voice Chat updater failed.\n\n" + ex.Message + logSuffix;
+                "MKW VoiceChat updater failed.\n\n" + ex.Message + logSuffix;
             Console.Error.WriteLine(message);
             ShowError(message);
             return 1;
@@ -440,7 +440,7 @@ internal static class Program
             _ = MessageBoxW(
                 IntPtr.Zero,
                 message,
-                "MKW Voice Chat Updater",
+                "MKW VoiceChat Updater",
                 0x00000010u | 0x00000000u);
         }
         catch

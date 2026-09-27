@@ -90,19 +90,19 @@ internal static class MkwvcReleaseCatalog
             json,
             JsonUtil.Options)
             ?? throw new InvalidDataException(
-                "MKW Voice Chat release manifest is empty.");
+                "MKW VoiceChat release manifest is empty.");
 
         Validate(manifest);
 
         if (!UpstreamCatalog.TryVersion(manifest.Version, out var latest))
             throw new InvalidDataException(
-                "MKW Voice Chat release manifest contains an invalid version.");
+                "MKW VoiceChat release manifest contains an invalid version.");
         if (!UpstreamCatalog.TryVersion(
                 manifest.WiiCompiledVersion,
                 out var requiredWiiCompiled))
         {
             throw new InvalidDataException(
-                "MKW Voice Chat release manifest contains an invalid WiiCompiled version.");
+                "MKW VoiceChat release manifest contains an invalid WiiCompiled version.");
         }
 
         return new(
@@ -122,7 +122,7 @@ internal static class MkwvcReleaseCatalog
         if (string.IsNullOrWhiteSpace(manifest.InstallerSha256))
         {
             throw new InvalidDataException(
-                "The advertised MKW Voice Chat update has no installer SHA-256. " +
+                "The advertised MKW VoiceChat update has no installer SHA-256. " +
                 "The release is incomplete and will not be installed.");
         }
 
@@ -164,7 +164,7 @@ internal static class MkwvcReleaseCatalog
         {
             File.Delete(destination);
             throw new InvalidDataException(
-                "Downloaded MKW Voice Chat installer is unexpectedly small.");
+                "Downloaded MKW VoiceChat installer is unexpectedly small.");
         }
 
         if (!string.IsNullOrWhiteSpace(manifest.InstallerSha256))
@@ -177,7 +177,7 @@ internal static class MkwvcReleaseCatalog
             {
                 File.Delete(destination);
                 throw new InvalidDataException(
-                    "Downloaded MKW Voice Chat installer failed SHA-256 verification.");
+                    "Downloaded MKW VoiceChat installer failed SHA-256 verification.");
             }
         }
 
@@ -270,7 +270,7 @@ internal static class MkwvcReleaseCatalog
 
         _ = Process.Start(start)
             ?? throw new InvalidOperationException(
-                "Could not start the MKW Voice Chat installer.");
+                "Could not start the MKW VoiceChat installer.");
         return 0;
     }
 
@@ -336,19 +336,19 @@ internal static class MkwvcReleaseCatalog
     {
         if (manifest.SchemaVersion != 1)
             throw new InvalidDataException(
-                $"Unsupported MKW Voice Chat release manifest schema {manifest.SchemaVersion}.");
+                $"Unsupported MKW VoiceChat release manifest schema {manifest.SchemaVersion}.");
 
         if (string.IsNullOrWhiteSpace(manifest.Version) ||
             string.IsNullOrWhiteSpace(manifest.PatchRevision) ||
             string.IsNullOrWhiteSpace(manifest.WiiCompiledVersion))
         {
             throw new InvalidDataException(
-                "MKW Voice Chat release manifest is incomplete.");
+                "MKW VoiceChat release manifest is incomplete.");
         }
 
         if (manifest.MinimumProtocol < 1)
             throw new InvalidDataException(
-                "MKW Voice Chat release manifest contains an invalid protocol requirement.");
+                "MKW VoiceChat release manifest contains an invalid protocol requirement.");
 
         if (!Uri.TryCreate(
                 manifest.InstallerUrl,
@@ -364,7 +364,7 @@ internal static class MkwvcReleaseCatalog
                 StringComparison.OrdinalIgnoreCase))
         {
             throw new InvalidDataException(
-                "MKW Voice Chat release manifest contains an invalid installer URL.");
+                "MKW VoiceChat release manifest contains an invalid installer URL.");
         }
 
         if (!string.IsNullOrWhiteSpace(manifest.InstallerSha256) &&
@@ -373,7 +373,7 @@ internal static class MkwvcReleaseCatalog
                  !Uri.IsHexDigit(ch))))
         {
             throw new InvalidDataException(
-                "MKW Voice Chat release manifest contains an invalid installer SHA-256.");
+                "MKW VoiceChat release manifest contains an invalid installer SHA-256.");
         }
     }
 }

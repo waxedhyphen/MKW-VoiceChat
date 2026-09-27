@@ -123,7 +123,7 @@
   </ItemGroup>
   <Target Name="BuildEmbeddedUpdater" BeforeTargets="PrepareResourceNames">
     <Exec Command="dotnet publish &quot;$(MkwvcUpdaterProject)&quot; -c $(Configuration) -r win-x64 --self-contained true -o &quot;$(MkwvcUpdaterPublishDir)&quot;" />
-    <Error Condition="!Exists('$(MkwvcUpdaterPublishDir)MKWVoiceChat-Updater.exe')" Text="MKW Voice Chat bootstrap updater publish did not produce MKWVoiceChat-Updater.exe." />
+    <Error Condition="!Exists('$(MkwvcUpdaterPublishDir)MKWVoiceChat-Updater.exe')" Text="MKW VoiceChat bootstrap updater publish did not produce MKWVoiceChat-Updater.exe." />
   </Target>
 
   <Target Name="LoadMkwvcProductVersion" BeforeTargets="GetAssemblyVersion">

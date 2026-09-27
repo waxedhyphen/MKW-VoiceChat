@@ -11,7 +11,7 @@ internal static class ConsoleUi
     public static void Banner()
     {
         WriteLine("");
-        WriteLine("Wiicompiled (Voicechat) Build Installer");
+        WriteLine("Wiicompiled (Voicechat) Installer");
         WriteLine("======================================");
     }
 
@@ -22,7 +22,7 @@ internal static class ConsoleUi
         WriteLine($"  {PatchStateStore.Root(layout)}");
         WriteLine("");
         WriteLine("Important:");
-        WriteLine("  This installs and compiles a separate WiiCompiled Voicechat build.");
+        WriteLine("  This installs and compiles a separate Wiicompiled (Voicechat) build.");
         WriteLine("  Wheel Wizard's normal Retro Rewind button does NOT launch the voice-chat build.");
         WriteLine("  Start the installed build with the \"Wiicompiled (Voicechat)\" desktop shortcut.");
         WriteLine("");

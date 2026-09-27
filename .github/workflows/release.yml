@@ -1,4 +1,4 @@
-name: MKW Voice Chat Release
+name: MKW VoiceChat Release
 
 on:
   push:
@@ -155,4 +155,4 @@ jobs:
             --verify-tag `
             --latest `
             --generate-notes `
-            --title "MKW Voice Chat $env:MKWVC_RELEASE_VERSION"
+            --title "MKW VoiceChat $env:MKWVC_RELEASE_VERSION"

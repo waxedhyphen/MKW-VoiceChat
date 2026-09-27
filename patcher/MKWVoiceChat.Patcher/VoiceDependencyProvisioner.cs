@@ -44,7 +44,7 @@ internal static class VoiceDependencyProvisioner
             "miniaudio",
             "miniaudio.h"),
 
-        // Stage 3: libdatachannel plus the exact dependency family required for
+        // libdatachannel plus the exact dependency family required for
         // WebSocket signaling + WebRTC DataChannels, but NO_MEDIA=ON so we do
         // not pull libSRTP. All versions/hashes match current vcpkg sources.
         new(

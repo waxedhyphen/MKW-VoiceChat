@@ -38,7 +38,7 @@ Defined in [`version.json`](version.json):
 
 | | |
 |---|---|
-| MKW VoiceChat | 0.14.3 |
+| MKW VoiceChat | 0.14.4 |
 | Protocol | 1 |
 | WiiCompiled base | 0.2.32 |
 
@@ -128,11 +128,11 @@ Push a tag `vX.Y.Z` matching `productVersion` in `version.json`. The release wor
 | Directory | Purpose |
 |---|---|
 | [`signaling_worker/`](signaling_worker/) | Production signaling (Cloudflare Workers + Durable Objects) |
-| [`signaling_server/`](signaling_server/) | Local Python signaling server for development |
+| [`signaling_server/`](signaling_server/) | Local Python signaling server for development (`pip install -r signaling_server/requirements.txt`, `python signaling_server/server.py --port 8765`) |
 | [`turn_server/`](turn_server/) | coturn deployment (Docker) for relay fallback |
 | [`rr_verifier/`](rr_verifier/) | Retro Rewind session verifier (not usable in production yet) |
 
-Each directory has its own README with deployment steps.
+See the READMEs in `signaling_worker/`, `turn_server/` and `rr_verifier/` for deployment.
 
 ## Source layout
 

@@ -22,7 +22,7 @@ internal static class VoicePatchCoordinator
                 $"latest: {observed.LatestWiiCompiled}, " +
                 $"this Voicechat build integration supports: {VoicePatchApplier.SupportedWiiCompiledVersion}. " +
                 $"For safety, this installer will NOT build against an unverified WiiCompiled release. " +
-                $"Install a newer WiiCompiled Voicechat installer after support for the new WiiCompiled release is published.");
+                $"Install a newer Wiicompiled (Voicechat) installer after support for the new WiiCompiled release is published.");
         }
 
         var patchPreimageClean = OfficialPatchPreimage.IsClean(
@@ -76,8 +76,8 @@ internal static class VoicePatchCoordinator
         }
 
         // --check-products deliberately avoids hashing the complete source
-        // workspace. The exact three upstream patch targets plus absence of the
-        // two MKWVC-owned bridge files provide a cheap deterministic preimage
+        // workspace. The exact four upstream patch targets plus absence of all
+        // MKWVC-owned bridge/core files provide a cheap deterministic preimage
         // check. A clean normal Wheel Wizard install can therefore build MKWVC
         // once without first compiling an unnecessary official copy. Dirty,
         // double-patched or unknown patch targets force the official setup to

@@ -1,6 +1,6 @@
 {
   "name": "mkw-voicechat",
-  "version-string": "0.8.0",
+  "version-string": "0.14.4",
   "dependencies": [
     {
       "name": "imgui",

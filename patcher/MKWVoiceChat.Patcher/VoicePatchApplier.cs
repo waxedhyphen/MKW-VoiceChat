@@ -266,7 +266,7 @@ internal static class VoicePatchApplier
         if (officialWiiCompiledVersion != SupportedWiiCompiledVersion)
         {
             throw new InvalidOperationException(
-                $"MKW Voice Chat patch {PatchRevision} supports WiiCompiled " +
+                $"MKW VoiceChat patch {PatchRevision} supports WiiCompiled " +
                 $"{SupportedWiiCompiledVersion}, but the requested base is " +
                 $"{officialWiiCompiledVersion}.");
         }
@@ -894,7 +894,7 @@ void DrawVoiceChatSettings() {
 
     ImGui::TextUnformatted(""Retro Rewind voice integration"");
     ImGui::TextDisabled(
-        ""MKW Voice Chat %s | Integration: %s"",
+        ""MKW VoiceChat %s | Integration: %s"",
         RetroRewindVoiceBridge::kMkwVoiceChatVersion,
         RetroRewindVoiceBridge::kMkwVoiceChatPatchRevision);
     ImGui::Text(
@@ -954,10 +954,10 @@ void DrawVoiceChatSettings() {
         }
 
         ImGui::TextWrapped(
-            ""Voice Chat has been disabled for this process until MKW Voice Chat is updated. Your saved Enabled setting was not changed."");
+            ""Voice Chat has been disabled for this process until MKW VoiceChat is updated. Your saved Enabled setting was not changed."");
         ImGui::PopStyleColor();
 
-        if(ImGui::Button(""Update MKW Voice Chat"")) {
+        if(ImGui::Button(""Update MKW VoiceChat"")) {
             if(RetroRewindVoiceBridge::LaunchInstalledUpdater()) {
                 ExitForAuroraWindowClose();
             }

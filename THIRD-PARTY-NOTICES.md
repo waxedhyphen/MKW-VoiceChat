@@ -1,6 +1,6 @@
 # Third-Party Notices
 
-MKW Voice Chat is distributed under the GNU General Public License version 3. See `LICENSE`.
+MKW VoiceChat is distributed under the GNU General Public License version 3. See `LICENSE`.
 
 ## WiiCompiled
 

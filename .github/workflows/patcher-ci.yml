@@ -1,4 +1,4 @@
-name: WiiCompiled Voicechat Installer CI
+name: MKW VoiceChat CI
 
 on:
   push:
