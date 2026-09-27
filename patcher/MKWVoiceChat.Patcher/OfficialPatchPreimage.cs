@@ -7,26 +7,26 @@ internal static class OfficialPatchPreimage
 {
     private sealed record ExpectedFile(string RelativePath, string GitBlobSha1);
 
-    // Exact upstream blobs at patchzyy/Wiicompiled v0.2.32. These are the
+    // Exact upstream blobs at patchzyy/Wiicompiled v0.2.33. These are the
     // upstream files the Voicechat integration edits. Voice-owned bridge/core
     // files must be absent on a clean official base.
-    private static readonly ExpectedFile[] ExpectedV0232 =
+    private static readonly ExpectedFile[] ExpectedV0233 =
     [
         new(
             @"runtime\CMakeLists.txt",
-            "0bee6f1add223f51732f549406c4f11f8c3323d9"),
+            "336370bbdfc1ee5523fe1bc1337c0392719a10a7"),
         new(
             @"runtime\cmake\PublicProducts.cmake",
-            "ad2a535b68bb3cb6c59b7bbfb702cd6ea6fc0674"),
+            "e76e75a5e68e6ef598964f490a49dc18bd8f995c"),
         new(
             @"runtime\src\hle\net\network_socket.cpp",
-            "95c6634f0b1794b3962646f1c5e4781d54803e93"),
+            "f8a55fb2f1e25ec8420ce55363705fae0cb8dd56"),
         new(
             @"runtime\src\settings_overlay.cpp",
-            "8127eaeb451b0a698506f90c62f44fa66de35b11")
+            "4f62f325afaebeaa71a5d48d4bc28a45ffd89b6d")
     ];
 
-    private static readonly string[] MustBeAbsentV0232 =
+    private static readonly string[] MustBeAbsentV0233 =
     [
         @"runtime\include\retro_rewind_voice_bridge.h",
         @"runtime\src\retro_rewind_voice_bridge.cpp",
@@ -82,7 +82,7 @@ internal static class OfficialPatchPreimage
             return false;
         }
 
-        foreach (var expected in ExpectedV0232)
+        foreach (var expected in ExpectedV0233)
         {
             var path = Path.Combine(workspace, expected.RelativePath);
             if (!File.Exists(path))
@@ -95,12 +95,12 @@ internal static class OfficialPatchPreimage
             if (!actual.Equals(expected.GitBlobSha1, StringComparison.OrdinalIgnoreCase))
             {
                 detail =
-                    $"Official patch source differs from v0.2.32: {expected.RelativePath}";
+                    $"Official patch source differs from v0.2.33: {expected.RelativePath}";
                 return false;
             }
         }
 
-        foreach (var relative in MustBeAbsentV0232)
+        foreach (var relative in MustBeAbsentV0233)
         {
             if (File.Exists(Path.Combine(workspace, relative)))
             {
@@ -109,7 +109,7 @@ internal static class OfficialPatchPreimage
             }
         }
 
-        detail = "MKWVC patch preimage matches official WiiCompiled v0.2.32.";
+        detail = "MKWVC patch preimage matches official WiiCompiled v0.2.33.";
         return true;
     }
 

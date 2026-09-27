@@ -7,11 +7,12 @@ internal static class ConsoleUi
     private static string _lastMessage = "";
     private static bool _progressVisible;
     private static int _progressRenderWidth;
+    private static bool _skipExitPause;
 
     public static void Banner()
     {
         WriteLine("");
-        WriteLine("Wiicompiled (Voicechat) Installer");
+        WriteLine("Wiicompiled (Voicechat) Build Installer");
         WriteLine("======================================");
     }
 
@@ -22,7 +23,7 @@ internal static class ConsoleUi
         WriteLine($"  {PatchStateStore.Root(layout)}");
         WriteLine("");
         WriteLine("Important:");
-        WriteLine("  This installs and compiles a separate Wiicompiled (Voicechat) build.");
+        WriteLine("  This installs and compiles a separate WiiCompiled Voicechat build.");
         WriteLine("  Wheel Wizard's normal Retro Rewind button does NOT launch the voice-chat build.");
         WriteLine("  Start the installed build with the \"Wiicompiled (Voicechat)\" desktop shortcut.");
         WriteLine("");
@@ -181,9 +182,15 @@ internal static class ConsoleUi
                 Console.WriteLine(char.ToUpperInvariant(key.KeyChar));
 
             if (key.Key == ConsoleKey.Y)
+            {
+                _skipExitPause = true;
                 return true;
+            }
             if (key.Key == ConsoleKey.N)
+            {
+                _skipExitPause = true;
                 return false;
+            }
         }
     }
 
@@ -196,6 +203,26 @@ internal static class ConsoleUi
             _lastMessage = "";
             _progressRenderWidth = 0;
         }
+    }
+
+    public static void PauseBeforeExit()
+    {
+        if (Console.IsInputRedirected || _skipExitPause)
+            return;
+
+        lock (Gate)
+        {
+            FinishProgressLineLocked();
+            Console.WriteLine();
+            Console.Write("Press Enter to close...");
+        }
+
+        while (Console.ReadKey(intercept: true).Key != ConsoleKey.Enter)
+        {
+        }
+
+        lock (Gate)
+            Console.WriteLine();
     }
 
     private static void FinishProgressLineLocked()

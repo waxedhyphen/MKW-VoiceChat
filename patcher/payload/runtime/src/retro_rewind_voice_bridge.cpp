@@ -75,6 +75,7 @@ struct ReleaseCheckState {
     std::mutex mutex;
     ReleaseStatus snapshot;
     bool workerRunning = false;
+    bool versionMismatchMessageShown = false;
     std::chrono::steady_clock::time_point nextCheck{};
 };
 
@@ -976,6 +977,7 @@ void FinishReleaseCheck(
     std::string latestVersion,
     std::string latestPatchRevision,
     std::string requiredWiiCompiledVersion,
+    std::string latestOfficialWiiCompiledVersion,
     std::string status) {
     auto& state=ReleaseState();
     std::lock_guard<std::mutex> lock(state.mutex);
@@ -997,6 +999,8 @@ void FinishReleaseCheck(
     state.snapshot.latestPatchRevision=std::move(latestPatchRevision);
     state.snapshot.requiredWiiCompiledVersion=
         std::move(requiredWiiCompiledVersion);
+    state.snapshot.latestOfficialWiiCompiledVersion=
+        std::move(latestOfficialWiiCompiledVersion);
     state.snapshot.status=std::move(status);
     state.nextCheck=
         std::chrono::steady_clock::now()+kReleaseCheckInterval;
@@ -1021,6 +1025,7 @@ void FinishReleaseCheckFailure(std::string status) {
         state.snapshot.latestVersion.clear();
         state.snapshot.latestPatchRevision.clear();
         state.snapshot.requiredWiiCompiledVersion.clear();
+        state.snapshot.latestOfficialWiiCompiledVersion.clear();
         state.snapshot.status=std::move(status);
     } else if(!state.snapshot.updateAvailable) {
         state.snapshot.status=std::move(status);
@@ -1028,6 +1033,92 @@ void FinishReleaseCheckFailure(std::string status) {
 
     state.nextCheck=
         std::chrono::steady_clock::now()+kReleaseCheckInterval;
+}
+
+std::string FetchLatestOfficialWiiCompiledVersion(HINTERNET session) {
+    constexpr wchar_t kHost[]=L"api.github.com";
+    constexpr wchar_t kPath[]=L"/repos/patchzyy/Wiicompiled/releases/latest";
+
+    WinHttpHandle connection(WinHttpConnect(
+        session,
+        kHost,
+        INTERNET_DEFAULT_HTTPS_PORT,
+        0));
+    if(!connection.value) return {};
+
+    WinHttpHandle request(WinHttpOpenRequest(
+        connection.value,
+        L"GET",
+        kPath,
+        nullptr,
+        WINHTTP_NO_REFERER,
+        WINHTTP_DEFAULT_ACCEPT_TYPES,
+        WINHTTP_FLAG_SECURE));
+    if(!request.value) return {};
+
+    constexpr wchar_t kHeaders[]=
+        L"Cache-Control: no-cache\r\nAccept: application/vnd.github+json\r\nUser-Agent: MKW-Voice-Chat\r\n";
+    if(!WinHttpSendRequest(
+            request.value,
+            kHeaders,
+            static_cast<DWORD>(-1L),
+            WINHTTP_NO_REQUEST_DATA,
+            0,
+            0,
+            0) ||
+       !WinHttpReceiveResponse(request.value,nullptr)) {
+        return {};
+    }
+
+    DWORD statusCode=0;
+    DWORD statusSize=sizeof(statusCode);
+    if(!WinHttpQueryHeaders(
+            request.value,
+            WINHTTP_QUERY_STATUS_CODE|WINHTTP_QUERY_FLAG_NUMBER,
+            WINHTTP_HEADER_NAME_BY_INDEX,
+            &statusCode,
+            &statusSize,
+            WINHTTP_NO_HEADER_INDEX) ||
+       statusCode!=200) {
+        return {};
+    }
+
+    std::string json;
+    while(json.size()<65536) {
+        DWORD available=0;
+        if(!WinHttpQueryDataAvailable(request.value,&available)) return {};
+        if(available==0) break;
+        const DWORD chunk=static_cast<DWORD>(
+            std::min<std::size_t>(available,65536-json.size()));
+        std::string buffer(chunk,'\0');
+        DWORD read=0;
+        if(!WinHttpReadData(request.value,buffer.data(),chunk,&read)) return {};
+        buffer.resize(read);
+        json+=buffer;
+        if(read==0) break;
+    }
+
+    std::string version=JsonStringValue(json,"tag_name");
+    if(!version.empty() && (version.front()=='v' || version.front()=='V')) {
+        version.erase(version.begin());
+    }
+    std::array<int,3> parsed{};
+    return ParseVersionTriplet(version,parsed) ? version : std::string{};
+}
+
+void ShowWiiCompiledVersionMismatch() {
+    auto& state=ReleaseState();
+    {
+        std::lock_guard<std::mutex> lock(state.mutex);
+        if(state.versionMismatchMessageShown) return;
+        state.versionMismatchMessageShown=true;
+    }
+
+    MessageBoxW(
+        nullptr,
+        L"This version does not match the official WiiCompiled version. Wait for an update for Voicechat and reinstall the installer through GitHub.",
+        L"MKW Voice Chat",
+        MB_OK|MB_ICONERROR|MB_SETFOREGROUND);
 }
 
 void ReleaseCheckWorker() {
@@ -1100,7 +1191,7 @@ void ReleaseCheckWorker() {
     if(statusCode==404) {
         FinishReleaseCheck(
             false,false,false,false,0,
-            {},{},{},
+            {},{},{},{},
             "No published release yet");
         return;
     }
@@ -1165,6 +1256,9 @@ void ReleaseCheckWorker() {
         return;
     }
 
+    const std::string latestOfficialWiiCompiledVersion=
+        FetchLatestOfficialWiiCompiledVersion(session.value);
+
     const int versionComparison=
         CompareVersions(latest,kMkwVoiceChatVersion);
     const bool releaseNotOlder=versionComparison>=0;
@@ -1173,11 +1267,17 @@ void ReleaseCheckWorker() {
         releaseNotOlder &&
         minimumProtocol>
         static_cast<int>(kMkwVoiceChatProtocolVersion);
-    const bool wiiCompiledRequired=
-        releaseNotOlder &&
+    const bool officialWiiCompiledRequired=
+        !latestOfficialWiiCompiledVersion.empty() &&
         CompareVersions(
-            requiredWiiCompiledVersion,
+            latestOfficialWiiCompiledVersion,
             kMkwVoiceChatWiiCompiledVersion)!=0;
+    const bool wiiCompiledRequired=
+        (releaseNotOlder &&
+         CompareVersions(
+             requiredWiiCompiledVersion,
+             kMkwVoiceChatWiiCompiledVersion)!=0) ||
+        officialWiiCompiledRequired;
     const bool integrationRequired=
         versionComparison==0 &&
         latestPatchRevision!=kMkwVoiceChatPatchRevision;
@@ -1196,7 +1296,12 @@ void ReleaseCheckWorker() {
         latest,
         latestPatchRevision,
         requiredWiiCompiledVersion,
+        latestOfficialWiiCompiledVersion,
         updateRequired ? "Update required" : "Current");
+
+    if(officialWiiCompiledRequired) {
+        ShowWiiCompiledVersionMismatch();
+    }
 }
 
 void EnsureReleaseCheckStarted() {
@@ -1803,9 +1908,9 @@ void ServiceRoomLookup() noexcept {
         mkwvc::setEmbeddedVoiceRuntimeBlocked(
             waitingForInitialCheck || updateRequired,
             waitingForInitialCheck
-                ? "Checking for MKW VoiceChat updates..."
+                ? "Checking for MKW Voice Chat updates..."
                 : (updateRequired
-                    ? "MKW VoiceChat update required"
+                    ? "MKW Voice Chat update required"
                     : std::string{}));
 
         const IdentitySnapshot identity=Snapshot();
@@ -1914,7 +2019,7 @@ bool LaunchInstalledUpdater() noexcept {
             auto& state=ReleaseState();
             std::lock_guard<std::mutex> lock(state.mutex);
             state.snapshot.status=
-                "Installed bootstrap updater is missing; reinstall MKW VoiceChat";
+                "Installed bootstrap updater is missing; reinstall MKW Voice Chat";
             return false;
         }
 

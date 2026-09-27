@@ -29,6 +29,7 @@ struct ReleaseStatus {
     std::string latestVersion;
     std::string latestPatchRevision;
     std::string requiredWiiCompiledVersion;
+    std::string latestOfficialWiiCompiledVersion;
     std::string status;
 };
 
@@ -51,9 +52,9 @@ void OnSocketClosed(std::uint32_t wiiFd, std::uint16_t peerPort) noexcept;
 
 IdentitySnapshot Snapshot();
 
-// Room players are resolved by the signaling Worker from the public RWFC
-// roster. Voice admission currently trusts the client-supplied profile ID
-// (unverified development admission) until a trusted RR verifier exists.
+// Public-RWFC roster discovery is deliberately diagnostic only. It proves the
+// in-process identity -> signaling Worker -> RR room path, but it does not
+// authorize voice membership until the separate trusted RR verifier exists.
 struct RoomPlayer {
     std::string profileId;
     std::string name;
@@ -85,7 +86,7 @@ struct RoomSnapshot {
 // keeps one persistent signaling WebSocket alive in a background worker. Local
 // RKNet room state gates voice presence immediately: leaving the game room
 // clears voice presence without waiting for the public roster poll. Worker-
-// pushed presence updates are consumed without network I/O on the game/UI thread.
+ // pushed presence updates are consumed without network I/O on the game/UI thread.
 void ServiceRoomLookup() noexcept;
 RoomSnapshot Room();
 

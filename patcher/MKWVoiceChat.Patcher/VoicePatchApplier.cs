@@ -266,7 +266,7 @@ internal static class VoicePatchApplier
         if (officialWiiCompiledVersion != SupportedWiiCompiledVersion)
         {
             throw new InvalidOperationException(
-                $"MKW VoiceChat patch {PatchRevision} supports WiiCompiled " +
+                $"MKW Voice Chat patch {PatchRevision} supports WiiCompiled " +
                 $"{SupportedWiiCompiledVersion}, but the requested base is " +
                 $"{officialWiiCompiledVersion}.");
         }
@@ -894,7 +894,7 @@ void DrawVoiceChatSettings() {
 
     ImGui::TextUnformatted(""Retro Rewind voice integration"");
     ImGui::TextDisabled(
-        ""MKW VoiceChat %s | Integration: %s"",
+        ""MKW Voice Chat %s | Integration: %s"",
         RetroRewindVoiceBridge::kMkwVoiceChatVersion,
         RetroRewindVoiceBridge::kMkwVoiceChatPatchRevision);
     ImGui::Text(
@@ -937,10 +937,15 @@ void DrawVoiceChatSettings() {
                 ""Installed base: %s"",
                 RetroRewindVoiceBridge::kMkwVoiceChatWiiCompiledVersion);
             ImGui::Text(
-                ""Required base: %s"",
-                release.requiredWiiCompiledVersion.empty()
-                    ? ""unknown""
-                    : release.requiredWiiCompiledVersion.c_str());
+                ""Voice Chat base: %s"",
+                RetroRewindVoiceBridge::kMkwVoiceChatWiiCompiledVersion);
+            ImGui::Text(
+                ""Official base: %s"",
+                release.latestOfficialWiiCompiledVersion.empty()
+                    ? (release.requiredWiiCompiledVersion.empty()
+                        ? ""unknown""
+                        : release.requiredWiiCompiledVersion.c_str())
+                    : release.latestOfficialWiiCompiledVersion.c_str());
         }
 
         if(release.protocolUpdateRequired) {
@@ -954,10 +959,10 @@ void DrawVoiceChatSettings() {
         }
 
         ImGui::TextWrapped(
-            ""Voice Chat has been disabled for this process until MKW VoiceChat is updated. Your saved Enabled setting was not changed."");
+            ""Voice Chat has been disabled for this process until MKW Voice Chat is updated. Your saved Enabled setting was not changed."");
         ImGui::PopStyleColor();
 
-        if(ImGui::Button(""Update MKW VoiceChat"")) {
+        if(ImGui::Button(""Update MKW Voice Chat"")) {
             if(RetroRewindVoiceBridge::LaunchInstalledUpdater()) {
                 ExitForAuroraWindowClose();
             }

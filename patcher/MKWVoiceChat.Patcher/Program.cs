@@ -4,9 +4,21 @@ internal static class Program
 {
     public static async Task<int> Main(string[] args)
     {
+        try
+        {
+            return await RunAsync(args);
+        }
+        finally
+        {
+            ConsoleUi.PauseBeforeExit();
+        }
+    }
+
+    private static async Task<int> RunAsync(string[] args)
+    {
         if (!OperatingSystem.IsWindows())
         {
-            ConsoleUi.WriteError("Wiicompiled (Voicechat) Installer currently supports Windows only.");
+            ConsoleUi.WriteError("Wiicompiled (Voicechat) Build Installer currently supports Windows only.");
             return 1;
         }
 
@@ -283,13 +295,13 @@ internal static class Program
         catch (Exception ex) when (!requireSuccessfulCheck)
         {
             ConsoleUi.WriteLine(
-                "MKW VoiceChat update check unavailable; continuing with this installer. " +
+                "MKW Voice Chat update check unavailable; continuing with this installer. " +
                 ex.Message);
             return false;
         }
 
         ConsoleUi.WriteLine(
-            $"MKW VoiceChat: installer={release.CurrentVersion.ToString(3)} " +
+            $"MKW Voice Chat: installer={release.CurrentVersion.ToString(3)} " +
             $"latest={release.LatestVersion.ToString(3)}");
 
         if (!release.UpdateAvailable)
@@ -298,7 +310,7 @@ internal static class Program
             {
                 throw new InvalidOperationException(
                     $"This installer supports protocol {MkwvcReleaseCatalog.CurrentProtocol}, " +
-                    $"but the current MKW VoiceChat release requires protocol " +
+                    $"but the current MKW Voice Chat release requires protocol " +
                     $"{release.Manifest.MinimumProtocol}. The release metadata does not " +
                     "advertise a newer installer that can satisfy this requirement.");
             }
@@ -306,14 +318,14 @@ internal static class Program
         }
 
         ConsoleUi.BeginPhase(
-            $"Downloading MKW VoiceChat {release.LatestVersion.ToString(3)}...");
+            $"Downloading MKW Voice Chat {release.LatestVersion.ToString(3)}...");
         var downloaded = await MkwvcReleaseCatalog.DownloadInstallerAsync(
             http,
             release.Manifest);
 
         ConsoleUi.Progress(
             100,
-            $"Downloaded MKW VoiceChat {release.LatestVersion.ToString(3)}.");
+            $"Downloaded MKW Voice Chat {release.LatestVersion.ToString(3)}.");
         ConsoleUi.WriteLine("Handing installation to the newer installer...");
 
         MkwvcReleaseCatalog.LaunchInstaller(
@@ -329,7 +341,7 @@ internal static class Program
         {
             var release = await MkwvcReleaseCatalog.CheckAsync(http);
             ConsoleUi.WriteLine(
-                $"MKW VoiceChat: installed-installer={release.CurrentVersion.ToString(3)} " +
+                $"MKW Voice Chat: installed-installer={release.CurrentVersion.ToString(3)} " +
                 $"latest={release.LatestVersion.ToString(3)} " +
                 $"[{(release.UpdateAvailable ? "UPDATE AVAILABLE" : "CURRENT")}]");
             ConsoleUi.WriteLine(
@@ -342,7 +354,7 @@ internal static class Program
         catch (Exception ex)
         {
             ConsoleUi.WriteLine(
-                "MKW VoiceChat release status could not be checked: " + ex.Message);
+                "MKW Voice Chat release status could not be checked: " + ex.Message);
         }
     }
 }
