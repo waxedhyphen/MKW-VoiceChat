@@ -1033,7 +1033,7 @@ void FinishReleaseCheckFailure(std::string status) {
 void ReleaseCheckWorker() {
     constexpr wchar_t kHost[]=L"github.com";
     constexpr wchar_t kPath[]=
-        L"/waxedhyphen/MKW-VoiceChat/releases/latest/download/mkwvc-release.json";
+        L"/zurasaaa/MKW-VoiceChat/releases/latest/download/mkwvc-release.json";
 
     WinHttpHandle session(WinHttpOpen(
         L"MKW VoiceChat release check/0.14",
