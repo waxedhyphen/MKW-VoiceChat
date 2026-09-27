@@ -1560,8 +1560,9 @@ void DrawVoiceChatSettings() {
 
         text = ReplaceOnce(
             text,
-            "    UpdateCursorAutoHide();\n    if (!StartupScreenVisible()) {\n",
+            "    UpdateCursorAutoHide();\n    UpdateBootShaderState();\n    if (!StartupScreenVisible()) {\n",
             "    UpdateCursorAutoHide();\n" +
+            "    UpdateBootShaderState();\n" +
             "    if (RuntimeProduct::IsRetroRewind()) {\n" +
             "        RetroRewindVoiceBridge::ServiceRoomLookup();\n" +
             "        ServiceVoiceHotkeys();\n" +
