@@ -125,9 +125,9 @@ jobs:
             patchRevision = $env:MKWVC_PATCH_REVISION
             minimumProtocol = [int]$env:MKWVC_PROTOCOL_VERSION
             wiiCompiledVersion = $env:MKWVC_WIICOMPILED_VERSION
-            installerUrl = "https://github.com/waxedhyphen/MKW-VoiceChat/releases/latest/download/WiiCompiled-VoiceChat-Installer.exe"
+            installerUrl = "https://github.com/$env:GITHUB_REPOSITORY/releases/latest/download/WiiCompiled-VoiceChat-Installer.exe"
             installerSha256 = $sha
-            releasePageUrl = "https://github.com/waxedhyphen/MKW-VoiceChat/releases/latest"
+            releasePageUrl = "https://github.com/$env:GITHUB_REPOSITORY/releases/latest"
           }
 
           $manifest | ConvertTo-Json | Set-Content "dist/mkwvc-release.json" -Encoding utf8
