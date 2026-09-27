@@ -2,7 +2,7 @@
 
 Room-based voice chat for Retro Rewind running on [WiiCompiled](https://github.com/patchzyy/Wiicompiled).
 
-Everyone in the same Retro Rewind online room who also runs MKW VoiceChat is connected automatically. No room codes or no separate app.
+Everyone in the same Retro Rewind online room who also runs MKW VoiceChat is connected automatically. No room codes or separate apps.
 
 > [!IMPORTANT]
 > This is an **unofficial, independent** project. It is **not** affiliated with, endorsed by or supported by WiiCompiled, Wheel Wizard or Retro Rewind, and **absolutely not** by Nintendo. Do not report issues with this project to any of them.
