@@ -64,6 +64,7 @@ struct EmbeddedPeerMetadata {
     std::string participantId;
     std::string displayName;
     std::string friendCode;
+    bool openHost = false;
 };
 
 struct EmbeddedPeerLink {
@@ -91,6 +92,8 @@ struct EmbeddedVoiceSessionState {
     float microphoneGain=1.0f;
     float playbackVolume=1.0f;
     bool enabled=false;
+    bool openHost=true;
+    bool nativeOpenHost=false;
     bool runtimeBlocked=false;
     std::string runtimeBlockReason;
     bool overlayVisible=true;
@@ -133,6 +136,8 @@ struct EmbeddedVoiceSessionState {
     std::chrono::steady_clock::time_point nextReconnect{};
     std::chrono::steady_clock::time_point presenceNextReconnect{};
     std::string presenceProfileId;
+    bool openHostRefreshPending=false;
+    std::chrono::steady_clock::time_point openHostRefreshAt{};
 };
 
 EmbeddedVoiceSessionState& voiceSessionState() {
@@ -170,6 +175,8 @@ void loadSettingsLocked(EmbeddedVoiceSessionState& state) {
         const auto path=RuntimeConfigFile::ResolveConfigPath();
         std::ifstream input(path,std::ios::binary);
         bool pushToTalkBindingWasConfigured=false;
+        bool openHostConfigured=false;
+        bool nativeOpenHostConfigured=false;
         if(input) {
             const auto document=toml::parse(input,RuntimeConfigFile::PathToUtf8(path));
             if(document.contains("voicechat") && document.at("voicechat").is_table()) {
@@ -177,8 +184,12 @@ void loadSettingsLocked(EmbeddedVoiceSessionState& state) {
                 pushToTalkBindingWasConfigured=
                     voiceTable.find("ptt_key")!=voiceTable.end() ||
                     voiceTable.find("ptt_controller")!=voiceTable.end();
+                openHostConfigured=voiceTable.find("open_host")!=voiceTable.end();
+                nativeOpenHostConfigured=voiceTable.find("native_open_host")!=voiceTable.end();
             }
             if(const auto value=RuntimeConfigFile::FindConfigValue<bool>(document,"voicechat","enabled")) state.enabled=*value;
+            if(const auto value=RuntimeConfigFile::FindConfigValue<bool>(document,"voicechat","open_host")) state.openHost=*value;
+            if(const auto value=RuntimeConfigFile::FindConfigValue<bool>(document,"voicechat","native_open_host")) state.nativeOpenHost=*value;
             if(const auto value=RuntimeConfigFile::FindConfigValue<bool>(document,"voicechat","overlay_visible")) state.overlayVisible=*value;
             if(const auto value=RuntimeConfigFile::FindConfigValue<bool>(document,"voicechat","overlay_local_status")) state.localStatusOverlayVisible=*value;
             else state.localStatusOverlayVisible=state.overlayVisible;
@@ -234,6 +245,9 @@ void loadSettingsLocked(EmbeddedVoiceSessionState& state) {
                 }
             }
         }
+
+        if(!openHostConfigured) persistBool("open_host",state.openHost);
+        if(!nativeOpenHostConfigured) persistBool("native_open_host",state.nativeOpenHost);
 
         if(state.muteEveryone) {
             state.muteOnlyFriends=false;
@@ -509,6 +523,7 @@ bool parseAdmission(
         const auto first=line.find('\t');
         const auto second=first==std::string_view::npos ? std::string_view::npos : line.find('\t',first+1);
         const auto third=second==std::string_view::npos ? std::string_view::npos : line.find('\t',second+1);
+        const auto fourth=third==std::string_view::npos ? std::string_view::npos : line.find('\t',third+1);
         if(first==std::string_view::npos || second==std::string_view::npos) return false;
 
         mkwvc::EmbeddedVoiceRoomPlayer player;
@@ -518,7 +533,12 @@ bool parseAdmission(
             ? line.substr(second+1)
             : line.substr(second+1,third-second-1));
         if(player.displayName.empty()) player.displayName="Player";
-        if(third!=std::string_view::npos) player.friendCode=std::string(line.substr(third+1));
+        if(third!=std::string_view::npos) {
+            player.friendCode=std::string(fourth==std::string_view::npos
+                ? line.substr(third+1)
+                : line.substr(third+1,fourth-third-1));
+        }
+        if(fourth!=std::string_view::npos) player.openHost=line.substr(fourth+1)=="1";
         if(player.profileId==expectedProfileId) localFound=true;
         if(player.profileId.empty()) return false;
         players.push_back(std::move(player));
@@ -536,6 +556,9 @@ std::vector<mkwvc::EmbeddedVoiceOnlineUser> parseOnlineRoster(
         const auto second=first==std::string_view::npos
             ? std::string_view::npos
             : line.find('\t',first+1);
+        const auto third=second==std::string_view::npos
+            ? std::string_view::npos
+            : line.find('\t',second+1);
         if(first==std::string_view::npos ||
            second==std::string_view::npos) {
             continue;
@@ -545,7 +568,10 @@ std::vector<mkwvc::EmbeddedVoiceOnlineUser> parseOnlineRoster(
         user.profileId=std::string(line.substr(0,first));
         user.displayName=decodeHex(
             line.substr(first+1,second-first-1));
-        user.friendCode=std::string(line.substr(second+1));
+        user.friendCode=std::string(third==std::string_view::npos
+            ? line.substr(second+1)
+            : line.substr(second+1,third-second-1));
+        if(third!=std::string_view::npos) user.openHost=line.substr(third+1)=="1";
         if(user.profileId.empty() || user.friendCode.empty()) continue;
         if(user.displayName.empty()) user.displayName="Player";
         users.push_back(std::move(user));
@@ -571,6 +597,7 @@ bool parseDevelopmentPeer(
     metadata.displayName=decodeHex(lines[4]);
     if(metadata.displayName.empty()) metadata.displayName="Player";
     if(lines.size()>=6) metadata.friendCode=std::string(lines[5]);
+    if(lines.size()>=7) metadata.openHost=lines[6]=="1";
     return true;
 }
 
@@ -1028,6 +1055,29 @@ void serviceEmbeddedVoiceSession(const EmbeddedVoiceSessionInput& input) noexcep
             : 0;
 
         const auto now = std::chrono::steady_clock::now();
+        if(state.openHostRefreshPending &&
+           state.signaling &&
+           state.signaling->open() &&
+           now>=state.openHostRefreshAt) {
+            try {
+                if(state.status.developmentAdmitted) {
+                    state.signaling->admitRetroRewindDevelopment(
+                        input.profileId,
+                        input.roomProfileIds);
+                    state.openHostRefreshPending=false;
+                } else if(state.status.productionAuthorized &&
+                          !state.roomInstanceId.empty()) {
+                    state.signaling->admitRetroRewindRoom(
+                        state.roomInstanceId);
+                    state.openHostRefreshPending=false;
+                } else {
+                    state.openHostRefreshAt=now+std::chrono::milliseconds(1500);
+                }
+            } catch(...) {
+                state.openHostRefreshAt=now+std::chrono::milliseconds(1500);
+            }
+        }
+
         if (!state.signaling &&
             (state.nextReconnect == std::chrono::steady_clock::time_point{} ||
              now >= state.nextReconnect)) {
@@ -1171,6 +1221,7 @@ void serviceEmbeddedVoiceSession(const EmbeddedVoiceSessionInput& input) noexcep
 
                     if(auto* player=roomPlayer(state,metadata.participantId)) {
                         player->voiceChat=true;
+                        player->openHost=metadata.openHost;
                         if(!metadata.displayName.empty()) player->displayName=metadata.displayName;
                         if(!metadata.friendCode.empty()) player->friendCode=metadata.friendCode;
                     } else {
@@ -1181,6 +1232,7 @@ void serviceEmbeddedVoiceSession(const EmbeddedVoiceSessionInput& input) noexcep
                             : metadata.displayName;
                         newPlayer.friendCode=metadata.friendCode;
                         newPlayer.voiceChat=true;
+                        newPlayer.openHost=metadata.openHost;
                         state.status.roomPlayers.push_back(std::move(newPlayer));
                     }
                     state.developmentPeers[memberId]=std::move(metadata);
@@ -1300,6 +1352,8 @@ EmbeddedVoiceControls embeddedVoiceControls() {
 
     EmbeddedVoiceControls controls;
     controls.enabled=state.enabled;
+    controls.openHost=state.openHost;
+    controls.nativeOpenHost=state.nativeOpenHost;
     controls.runtimeBlocked=state.runtimeBlocked;
     controls.runtimeBlockReason=state.runtimeBlockReason;
     controls.overlayVisible=state.overlayVisible;
@@ -1354,6 +1408,7 @@ EmbeddedVoiceControls embeddedVoiceControls() {
                 control.participantId=found->second.participantId;
                 control.displayName=found->second.displayName;
                 control.friendCode=found->second.friendCode;
+                control.openHost=found->second.openHost;
             }
             if(!control.participantId.empty()) {
                 control.volume=manualVolumeFor(state,control.participantId);
@@ -1405,6 +1460,47 @@ void setEmbeddedVoiceRuntimeBlocked(bool blocked,std::string reason) {
     state.status.status=state.enabled
         ? "Enabled; waiting for Retro Rewind room"
         : "Disabled";
+}
+
+void requestEmbeddedVoiceOpenHostRefresh() {
+    auto& state=voiceSessionState();
+    std::lock_guard<std::mutex> lock(state.mutex);
+    loadSettingsLocked(state);
+    state.openHostRefreshPending=true;
+    state.openHostRefreshAt=
+        std::chrono::steady_clock::now()+std::chrono::milliseconds(1500);
+}
+
+bool embeddedVoiceOpenHostEnabled() {
+    auto& state=voiceSessionState();
+    std::lock_guard<std::mutex> lock(state.mutex);
+    loadSettingsLocked(state);
+    return state.openHost;
+}
+
+bool embeddedVoiceNativeOpenHostEnabled() {
+    auto& state=voiceSessionState();
+    std::lock_guard<std::mutex> lock(state.mutex);
+    loadSettingsLocked(state);
+    return state.nativeOpenHost;
+}
+
+void setEmbeddedVoiceOpenHost(bool enabled) {
+    auto& state=voiceSessionState();
+    std::lock_guard<std::mutex> lock(state.mutex);
+    loadSettingsLocked(state);
+    if(state.openHost==enabled) return;
+    state.openHost=enabled;
+    persistBool("open_host",enabled);
+}
+
+void setEmbeddedVoiceNativeOpenHost(bool enabled) {
+    auto& state=voiceSessionState();
+    std::lock_guard<std::mutex> lock(state.mutex);
+    loadSettingsLocked(state);
+    if(state.nativeOpenHost==enabled) return;
+    state.nativeOpenHost=enabled;
+    persistBool("native_open_host",enabled);
 }
 
 void setEmbeddedVoiceEnabled(bool enabled) {

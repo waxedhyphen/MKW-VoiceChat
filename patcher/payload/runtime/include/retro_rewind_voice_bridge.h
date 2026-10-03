@@ -44,8 +44,13 @@ struct IdentitySnapshot {
     std::uint64_t generation = 0;
 };
 
+bool RewriteGpcmSend(std::uint32_t wiiFd, std::uint16_t peerPort,
+                     const std::uint8_t* data, std::size_t size,
+                     std::vector<std::uint8_t>& rewritten) noexcept;
+void ConfirmGpcmRewriteSent(std::uint32_t wiiFd, std::uint16_t peerPort) noexcept;
 void ObserveGpcmSend(std::uint32_t wiiFd, std::uint16_t peerPort,
                      const std::uint8_t* data, std::size_t size) noexcept;
+void RequestOpenHostOverrideRefresh() noexcept;
 void ObserveGpcmReceive(std::uint32_t wiiFd, std::uint16_t peerPort,
                         const std::uint8_t* data, std::size_t size) noexcept;
 void OnSocketClosed(std::uint32_t wiiFd, std::uint16_t peerPort) noexcept;
@@ -60,6 +65,7 @@ struct RoomPlayer {
     std::string name;
     std::string friendCode;
     bool voiceChat = false;
+    bool openHost = false;
     bool isFriend = false;
 };
 

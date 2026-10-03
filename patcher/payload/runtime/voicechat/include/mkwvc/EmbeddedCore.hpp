@@ -33,12 +33,14 @@ struct EmbeddedVoiceRoomPlayer {
     std::string displayName;
     std::string friendCode;
     bool voiceChat = false;
+    bool openHost = false;
 };
 
 struct EmbeddedVoiceOnlineUser {
     std::string profileId;
     std::string displayName;
     std::string friendCode;
+    bool openHost = false;
 };
 
 struct EmbeddedVoiceSessionStatus {
@@ -83,6 +85,7 @@ struct EmbeddedVoicePeerControl {
     std::uint32_t voicePeak = 0;
     bool speaking = false;
     bool isFriend = false;
+    bool openHost = false;
     bool isTeammate = false;
     bool policyMuted = false;
     bool remoteMuted = false;
@@ -91,6 +94,8 @@ struct EmbeddedVoicePeerControl {
 
 struct EmbeddedVoiceControls {
     bool enabled = false;
+    bool openHost = true;
+    bool nativeOpenHost = false;
     bool runtimeBlocked = false;
     std::string runtimeBlockReason;
     bool overlayVisible = true;
@@ -144,6 +149,11 @@ EmbeddedVoiceSessionStatus embeddedVoiceSessionStatus();
 EmbeddedVoiceControls embeddedVoiceControls();
 void setEmbeddedVoiceRuntimeBlocked(bool blocked,std::string reason);
 void setEmbeddedVoiceEnabled(bool enabled);
+void setEmbeddedVoiceOpenHost(bool enabled);
+void setEmbeddedVoiceNativeOpenHost(bool enabled);
+void requestEmbeddedVoiceOpenHostRefresh();
+bool embeddedVoiceOpenHostEnabled();
+bool embeddedVoiceNativeOpenHostEnabled();
 void setEmbeddedVoiceOverlayVisible(bool visible);
 void setEmbeddedVoiceOverlayOptions(bool localStatusVisible,bool playerSpeakersVisible,float playerSpeakerBackgroundTransparency);
 void setEmbeddedVoiceMutePolicy(bool muteEveryone,bool muteOnlyFriends,bool muteEveryoneButFriends,bool muteTeammates,bool muteEveryoneButTeammates,bool muteNewPlayers);

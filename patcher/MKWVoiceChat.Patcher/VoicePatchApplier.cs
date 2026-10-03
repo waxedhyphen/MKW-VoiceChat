@@ -537,10 +537,32 @@ internal static class VoicePatchApplier
             text,
             "        const uint32_t sendSize = patchedWrite ? static_cast<uint32_t>(patched.size()) : in[0].size;\n" +
             "        const int ret = sendto(",
-            "        const uint32_t sendSize = patchedWrite ? static_cast<uint32_t>(patched.size()) : in[0].size;\n" +
+            "        uint32_t sendSize = patchedWrite ? static_cast<uint32_t>(patched.size()) : in[0].size;\n" +
             "        RetroRewindVoiceBridge::ObserveGpcmSend(fd, s->peerPort, sendData, sendSize);\n" +
+            "        std::vector<uint8_t> voicePatched;\n" +
+            "        const bool voicePatchedWrite = RetroRewindVoiceBridge::RewriteGpcmSend(\n" +
+            "            fd, s->peerPort, sendData, sendSize, voicePatched);\n" +
+            "        if (voicePatchedWrite) {\n" +
+            "            sendData = voicePatched.data();\n" +
+            "            sendSize = static_cast<uint32_t>(voicePatched.size());\n" +
+            "        }\n" +
             "        const int ret = sendto(",
             "network_socket send observer");
+
+        text = ReplaceOnce(
+            text,
+            "        if (patchedWrite && ret == static_cast<int>(sendSize)) {\n",
+            "        if ((patchedWrite || voicePatchedWrite) && ret == static_cast<int>(sendSize)) {\n",
+            "network_socket rewritten send result");
+
+        text = ReplaceOnce(
+            text,
+            "        const int hostError = ret < 0 ? NativeLastError() : 0;\n",
+            "        const int hostError = ret < 0 ? NativeLastError() : 0;\n" +
+            "        if (voicePatchedWrite && ret == static_cast<int>(sendSize)) {\n" +
+            "            RetroRewindVoiceBridge::ConfirmGpcmRewriteSent(fd, s->peerPort);\n" +
+            "        }\n",
+            "network_socket Open Host send confirmation");
 
         text = ReplaceOnce(
             text,
@@ -793,6 +815,12 @@ void DrawVoiceChatOverlay() {
                 if(peer.isFriend) {
                     ImGui::SameLine();
                     ImGui::TextDisabled(""| FRIEND"");
+                }
+                if(peer.openHost) {
+                    ImGui::SameLine();
+                    ImGui::PushStyleColor(ImGuiCol_Text,ImVec4(1.0f,0.82f,0.18f,1.0f));
+                    ImGui::TextUnformatted(""| OPEN HOST"");
+                    ImGui::PopStyleColor();
                 }
                 if(peer.policyMuted) {
                     ImGui::SameLine();
@@ -1471,6 +1499,12 @@ void DrawVoiceChatSettings() {
                 ImGui::SameLine(0.0f,4.0f);
                 ImGui::TextDisabled(""[%s]"",peerFriendCode.c_str());
             }
+            if(peer.openHost) {
+                ImGui::SameLine(0.0f,4.0f);
+                ImGui::PushStyleColor(ImGuiCol_Text,ImVec4(1.0f,0.82f,0.18f,1.0f));
+                ImGui::TextUnformatted(""[OPEN HOST]"");
+                ImGui::PopStyleColor();
+            }
 
             ImGui::TableNextColumn();
             if(peer.policyMuted) ImGui::TextDisabled(""Auto-muted"");
@@ -1517,11 +1551,39 @@ void DrawVoiceChatSettings() {
                 ImGui::SameLine(0.0f,4.0f);
                 ImGui::TextDisabled(""[%s]"",player.friendCode.c_str());
             }
+            if(player.openHost) {
+                ImGui::SameLine(0.0f,4.0f);
+                ImGui::PushStyleColor(ImGuiCol_Text,ImVec4(1.0f,0.82f,0.18f,1.0f));
+                ImGui::TextUnformatted(""[OPEN HOST]"");
+                ImGui::PopStyleColor();
+            }
             if(player.voiceChat) {
                 ImGui::SameLine(0.0f,4.0f);
                 ImGui::TextDisabled(""[Voice Chat]"");
             }
         }
+    }
+
+    bool openHost=controls.openHost;
+    ImGui::PushStyleColor(ImGuiCol_Text,ImVec4(1.0f,0.82f,0.18f,1.0f));
+    ImGui::PushStyleColor(ImGuiCol_CheckMark,ImVec4(1.0f,0.82f,0.18f,1.0f));
+    if(ImGui::Checkbox(""Open Host"",&openHost)) {
+        mkwvc::setEmbeddedVoiceOpenHost(openHost);
+        RetroRewindVoiceBridge::RequestOpenHostOverrideRefresh();
+        controls=mkwvc::embeddedVoiceControls();
+    }
+    const bool openHostHovered=ImGui::IsItemHovered();
+    ImGui::PopStyleColor(2);
+    if(openHostHovered) {
+        ImGui::BeginTooltip();
+        ImGui::PushTextWrapPos(ImGui::GetFontSize()*32.0f);
+        ImGui::TextUnformatted(
+            ""Overrides your native Open Host setting while the MKW Voice Chat build is running. ""
+            ""Your original setting is preserved separately and is not overwritten. ""
+            ""This helps make Voice Chat more accessible by making it easier for Voice Chat users ""
+            ""who don't know each other to meet and join each other's rooms."");
+        ImGui::PopTextWrapPos();
+        ImGui::EndTooltip();
     }
 
     ImGui::PushStyleColor(
@@ -1552,6 +1614,12 @@ void DrawVoiceChatSettings() {
                 ImGui::TextUnformatted(user.displayName.c_str());
                 ImGui::SameLine(0.0f,4.0f);
                 ImGui::TextDisabled(""[%s]"",user.friendCode.c_str());
+                if(user.openHost) {
+                    ImGui::SameLine(0.0f,4.0f);
+                    ImGui::PushStyleColor(ImGuiCol_Text,ImVec4(1.0f,0.82f,0.18f,1.0f));
+                    ImGui::TextUnformatted(""[OPEN HOST]"");
+                    ImGui::PopStyleColor();
+                }
             }
         }
         ImGui::Unindent();

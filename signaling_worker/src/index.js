@@ -49,11 +49,13 @@ function sessionOf(socket) {
             rrVoiceParticipantId:null,
             rrVoiceDisplayName:null,
             rrVoiceFriendCode:null,
+            rrVoiceOpenHost:false,
             rrVoiceMode:null,
             voiceOnline:false,
             voiceProfileId:null,
             voiceDisplayName:null,
-            voiceFriendCode:null
+            voiceFriendCode:null,
+            voiceOpenHost:false
         };
     }
 
@@ -85,11 +87,13 @@ function sessionOf(socket) {
         rrVoiceParticipantId:typeof value.rrVoiceParticipantId==="string" ? value.rrVoiceParticipantId : null,
         rrVoiceDisplayName:typeof value.rrVoiceDisplayName==="string" ? value.rrVoiceDisplayName : null,
         rrVoiceFriendCode:typeof value.rrVoiceFriendCode==="string" ? value.rrVoiceFriendCode : null,
+        rrVoiceOpenHost:value.rrVoiceOpenHost===true,
         rrVoiceMode:value.rrVoiceMode==="production" || value.rrVoiceMode==="development" ? value.rrVoiceMode : null,
         voiceOnline:value.voiceOnline===true,
         voiceProfileId:typeof value.voiceProfileId==="string" ? value.voiceProfileId : null,
         voiceDisplayName:typeof value.voiceDisplayName==="string" ? value.voiceDisplayName : null,
-        voiceFriendCode:typeof value.voiceFriendCode==="string" ? value.voiceFriendCode : null
+        voiceFriendCode:typeof value.voiceFriendCode==="string" ? value.voiceFriendCode : null,
+        voiceOpenHost:value.voiceOpenHost===true
     };
 }
 
@@ -156,7 +160,8 @@ function rrPeerInfoMessage(socket) {
         (session.rrVoiceRoomInstanceId??"")+"\n"+
         session.country+"\n"+
         encodeHexText(session.rrVoiceDisplayName??"Player")+"\n"+
-        (session.rrVoiceFriendCode??"");
+        (session.rrVoiceFriendCode??"")+"\n"+
+        (session.rrVoiceOpenHost ? "1" : "0");
 }
 
 function parsePositiveInteger(value,fallback,min,max) {
@@ -350,11 +355,13 @@ export class SignalingHub extends DurableObject {
             rrVoiceParticipantId:null,
             rrVoiceDisplayName:null,
             rrVoiceFriendCode:null,
+            rrVoiceOpenHost:false,
             rrVoiceMode:null,
             voiceOnline:false,
             voiceProfileId:null,
             voiceDisplayName:null,
-            voiceFriendCode:null
+            voiceFriendCode:null,
+            voiceOpenHost:false
         });
 
         this.debug("ws_open",{session:sessionId.slice(0,8)});
@@ -419,7 +426,8 @@ export class SignalingHub extends DurableObject {
             .map(player=>({
                 pid:String(player?.pid??player?.Pid??""),
                 name:String(player?.name??player?.Name??"Player"),
-                friendCode:String(player?.fc??player?.Fc??"")
+                friendCode:String(player?.fc??player?.Fc??""),
+                openHost:String(player?.openhost??player?.Openhost??player?.openHost??player?.OpenHost??"").toLowerCase()==="true"
             }))
             .filter(player=>player.pid);
 
@@ -464,12 +472,13 @@ export class SignalingHub extends DurableObject {
             rosterByPid.set(session.rrVoiceParticipantId,{
                 pid:session.rrVoiceParticipantId,
                 name:session.rrVoiceDisplayName||session.rrVoiceParticipantId,
-                friendCode:session.rrVoiceFriendCode??""
+                friendCode:session.rrVoiceFriendCode??"",
+                openHost:session.rrVoiceOpenHost===true
             });
         }
         for(const pid of local) {
             if(!rosterByPid.has(pid)) {
-                rosterByPid.set(pid,{pid,name:pid,friendCode:""});
+                rosterByPid.set(pid,{pid,name:pid,friendCode:"",openHost:false});
             }
         }
 
@@ -493,7 +502,9 @@ export class SignalingHub extends DurableObject {
             lines.push(
                 player.pid+"\t"+
                 (voiceIds.has(player.pid) ? "1" : "0")+"\t"+
-                encodeHexText(player.name)
+                encodeHexText(player.name)+"\t"+
+                String(player.friendCode??"")+"\t"+
+                (player.openHost ? "1" : "0")
             );
         }
 
@@ -543,6 +554,7 @@ export class SignalingHub extends DurableObject {
             voiceProfileId:online ? current.voiceProfileId : null,
             voiceDisplayName:online ? current.voiceDisplayName : null,
             voiceFriendCode:online ? current.voiceFriendCode : null,
+            voiceOpenHost:online ? current.voiceOpenHost : false,
             lastHeartbeat:Date.now()
         });
         if(current.voiceOnline!==online || online) {
@@ -558,7 +570,8 @@ export class SignalingHub extends DurableObject {
                session.rrVoiceFriendCode) {
                 return {
                     displayName:session.rrVoiceDisplayName??"Player",
-                    friendCode:session.rrVoiceFriendCode
+                    friendCode:session.rrVoiceFriendCode,
+                    openHost:session.rrVoiceOpenHost===true
                 };
             }
         }
@@ -573,7 +586,8 @@ export class SignalingHub extends DurableObject {
             updateSession(socket,{
                 voiceProfileId:null,
                 voiceDisplayName:null,
-                voiceFriendCode:null
+                voiceFriendCode:null,
+                voiceOpenHost:false
             });
             this.broadcastRrVoiceOnlineCount();
             return;
@@ -583,19 +597,21 @@ export class SignalingHub extends DurableObject {
         updateSession(socket,{
             voiceProfileId:profileId,
             voiceDisplayName:metadata?.displayName??null,
-            voiceFriendCode:metadata?.friendCode??null
+            voiceFriendCode:metadata?.friendCode??null,
+            voiceOpenHost:metadata?.openHost===true
         });
         this.broadcastRrVoiceOnlineCount();
     }
 
-    syncVoicePresenceMetadata(profileId,displayName,friendCode) {
+    syncVoicePresenceMetadata(profileId,displayName,friendCode,openHost=false) {
         if(!profileId || !friendCode) return;
         for(const socket of this.rrVoiceOnlineSockets()) {
             const current=sessionOf(socket);
             if(current.voiceProfileId!==profileId) continue;
             updateSession(socket,{
                 voiceDisplayName:String(displayName??"Player").slice(0,32),
-                voiceFriendCode:String(friendCode).replace(/[\\r\\n\\t]/g,"").slice(0,32)
+                voiceFriendCode:String(friendCode).replace(/[\\r\\n\\t]/g,"").slice(0,32),
+                voiceOpenHost:openHost===true
             });
         }
     }
@@ -616,7 +632,8 @@ export class SignalingHub extends DurableObject {
             rosterByProfile.set(session.voiceProfileId,{
                 profileId:session.voiceProfileId,
                 displayName:session.voiceDisplayName,
-                friendCode:session.voiceFriendCode
+                friendCode:session.voiceFriendCode,
+                openHost:session.voiceOpenHost===true
             });
         }
 
@@ -626,7 +643,8 @@ export class SignalingHub extends DurableObject {
             .map(user=>
                 user.profileId+"\t"+
                 encodeHexText(user.displayName)+"\t"+
-                user.friendCode)
+                user.friendCode+"\t"+
+                (user.openHost ? "1" : "0"))
             .join("\n");
 
         for(const socket of sockets) {
@@ -664,6 +682,7 @@ export class SignalingHub extends DurableObject {
             rrVoiceParticipantId:null,
             rrVoiceDisplayName:null,
             rrVoiceFriendCode:null,
+            rrVoiceOpenHost:false,
             rrVoiceMode:null,
             signalsInRoom:0
         });
@@ -771,13 +790,22 @@ export class SignalingHub extends DurableObject {
         if(current.rrVoiceRoomInstanceId===requestedRoomInstanceId &&
            current.rrVoiceMemberId &&
            current.rrVoiceMode==="production") {
+            updateSession(socket,{
+                rrVoiceDisplayName:String(player.name??"Player").slice(0,32),
+                rrVoiceFriendCode:String(player.friendCode??""),
+                rrVoiceOpenHost:player.openHost===true
+            });
             sendSafe(socket,await this.iceServersMessage());
             sendSafe(socket,
                 "RR_ADMITTED "+current.rrVoiceMemberId+"\n"+requestedRoomInstanceId);
             this.syncVoicePresenceMetadata(
                 current.rrVoiceParticipantId,
-                current.rrVoiceDisplayName,
-                current.rrVoiceFriendCode);
+                player.name,
+                player.friendCode,
+                player.openHost===true);
+            for(const peer of this.rrVoiceMembers(requestedRoomInstanceId,"production")) {
+                if(peer!==socket) sendSafe(peer,rrPeerInfoMessage(socket));
+            }
             this.broadcastRrVoiceOnlineCount();
             return;
         }
@@ -812,6 +840,7 @@ export class SignalingHub extends DurableObject {
             rrVoiceParticipantId:current.rrParticipantId,
             rrVoiceDisplayName:String(player.name??"Player").slice(0,32),
             rrVoiceFriendCode:String(player.friendCode??""),
+            rrVoiceOpenHost:player.openHost===true,
             rrVoiceMode:"production",
             signalsInRoom:0,
             lastHeartbeat:Date.now()
@@ -819,7 +848,8 @@ export class SignalingHub extends DurableObject {
         this.syncVoicePresenceMetadata(
             current.rrParticipantId,
             player.name,
-            player.friendCode);
+            player.friendCode,
+            player.openHost===true);
         await this.ensureLivenessAlarm();
 
         this.debug("rr_admit",{
@@ -855,7 +885,8 @@ export class SignalingHub extends DurableObject {
                 player.pid+"\t"+
                 (voiceIds.has(player.pid) ? "1" : "0")+"\t"+
                 encodeHexText(player.name)+"\t"+
-                String(player.friendCode??"")
+                String(player.friendCode??"")+"\t"+
+                (player.openHost ? "1" : "0")
             );
         }
 
@@ -913,12 +944,21 @@ export class SignalingHub extends DurableObject {
                current.rrVoiceParticipantId===profileId &&
                current.rrVoiceMemberId &&
                current.rrVoiceMode==="development") {
+                updateSession(socket,{
+                    rrVoiceDisplayName:String(player.name??"Player").slice(0,32),
+                    rrVoiceFriendCode:String(player.friendCode??""),
+                    rrVoiceOpenHost:player.openHost===true
+                });
                 sendSafe(socket,await this.iceServersMessage());
                 this.sendRrDevelopmentAdmitted(socket,current.rrVoiceMemberId,room);
                 this.syncVoicePresenceMetadata(
                     profileId,
-                    current.rrVoiceDisplayName,
-                    current.rrVoiceFriendCode);
+                    player.name,
+                    player.friendCode,
+                    player.openHost===true);
+                for(const peer of this.rrVoiceMembers(roomInstanceId,"development")) {
+                    if(peer!==socket) sendSafe(peer,rrPeerInfoMessage(socket));
+                }
                 this.broadcastRrVoiceOnlineCount();
                 return;
             }
@@ -959,6 +999,7 @@ export class SignalingHub extends DurableObject {
                 rrVoiceParticipantId:profileId,
                 rrVoiceDisplayName:String(player.name??"Player").slice(0,32),
                 rrVoiceFriendCode:String(player.friendCode??""),
+                rrVoiceOpenHost:player.openHost===true,
                 rrVoiceMode:"development",
                 signalsInRoom:0,
                 lastHeartbeat:Date.now()
@@ -966,7 +1007,8 @@ export class SignalingHub extends DurableObject {
             this.syncVoicePresenceMetadata(
                 profileId,
                 player.name,
-                player.friendCode);
+                player.friendCode,
+                player.openHost===true);
             await this.ensureLivenessAlarm();
 
             this.debug("rr_dev_admit",{
@@ -1087,6 +1129,7 @@ export class SignalingHub extends DurableObject {
             rrVoiceParticipantId:null,
             rrVoiceDisplayName:null,
             rrVoiceFriendCode:null,
+            rrVoiceOpenHost:false,
             rrVoiceMode:null
         });
 
@@ -1110,7 +1153,9 @@ export class SignalingHub extends DurableObject {
             lines.push(
                 player.pid+"\t"+
                 (voiceIds.has(player.pid) ? "1" : "0")+"\t"+
-                encodeHexText(player.name)
+                encodeHexText(player.name)+"\t"+
+                String(player.friendCode??"")+"\t"+
+                (player.openHost ? "1" : "0")
             );
         }
 
@@ -1187,11 +1232,21 @@ export class SignalingHub extends DurableObject {
                 this.leaveRrVoiceMembership(socket);
                 sendSafe(socket,"RR_ADMIT_FAIL Authoritative RR room changed");
             }
+            const player=room?.roster?.find(entry=>entry.pid===current.rrParticipantId)??null;
             updateSession(socket,{
                 rrRoomId:room?.roomId??null,
                 rrRoomInstanceId:room?.roomInstanceId??null,
-                rrRoomCreated:room?.created??null
+                rrRoomCreated:room?.created??null,
+                rrVoiceOpenHost:player ? player.openHost===true : current.rrVoiceOpenHost
             });
+            if(player && current.rrVoiceRoomInstanceId===room?.roomInstanceId) {
+                this.syncVoicePresenceMetadata(
+                    current.rrParticipantId,
+                    player.name,
+                    player.friendCode,
+                    player.openHost===true);
+                this.broadcastRrVoiceOnlineCount();
+            }
             this.sendRrStatus(socket,room);
         } catch(error) {
             this.leaveRrVoiceMembership(socket);

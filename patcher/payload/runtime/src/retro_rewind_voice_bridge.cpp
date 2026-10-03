@@ -38,6 +38,7 @@ struct SocketState {
     std::string inbound;
     std::string outbound;
     std::string gameName;
+    bool openHostOverridePending = false;
 };
 
 std::mutex g_mutex;
@@ -233,6 +234,12 @@ void HandleOutboundLocked(std::uint32_t wiiFd, std::string_view message) {
         state.gameName = gameName;
     }
 
+    const std::string nativeOpenHost = ValueForKey(message, "wl:oh");
+    if (nativeOpenHost == "0" || nativeOpenHost == "1") {
+        mkwvc::setEmbeddedVoiceNativeOpenHost(nativeOpenHost == "1");
+        state.openHostOverridePending = true;
+    }
+
     // A GameSpy logout explicitly ends the live bearer session even before the
     // TCP socket is physically closed.
     if (message.find("\\logout\\") != std::string_view::npos &&
@@ -269,6 +276,7 @@ void HandleInboundLocked(std::uint32_t wiiFd, std::string_view message) {
     g_identity.sessionKey = sessionKey;
     g_identity.gameName = gameName;
     g_identitySocket = wiiFd;
+    state.openHostOverridePending = true;
     if (changed) {
         ++g_identity.generation;
     }
@@ -899,6 +907,8 @@ RoomSnapshot ParseRoomReply(const std::string& message, std::string_view expecte
         const std::string& line = lines[i];
         const std::size_t first = line.find('\t');
         const std::size_t second = first == std::string::npos ? std::string::npos : line.find('\t', first + 1);
+        const std::size_t third = second == std::string::npos ? std::string::npos : line.find('\t', second + 1);
+        const std::size_t fourth = third == std::string::npos ? std::string::npos : line.find('\t', third + 1);
         if (first == std::string::npos || second == std::string::npos) {
             continue;
         }
@@ -906,9 +916,19 @@ RoomSnapshot ParseRoomReply(const std::string& message, std::string_view expecte
         RoomPlayer player;
         player.profileId = line.substr(0, first);
         player.voiceChat = line.substr(first + 1, second - first - 1) == "1";
-        player.name = DecodeHex(std::string_view(line).substr(second + 1));
+        player.name = DecodeHex(third == std::string::npos
+            ? std::string_view(line).substr(second + 1)
+            : std::string_view(line).substr(second + 1, third - second - 1));
         if (player.name.empty()) {
             player.name = "Player";
+        }
+        if (third != std::string::npos) {
+            player.friendCode = fourth == std::string::npos
+                ? line.substr(third + 1)
+                : line.substr(third + 1, fourth - third - 1);
+        }
+        if (fourth != std::string::npos) {
+            player.openHost = line.substr(fourth + 1) == "1";
         }
         if (!player.profileId.empty()) {
             result.players.push_back(std::move(player));
@@ -1837,6 +1857,104 @@ void PersistentRoomWorker(std::string, std::uint64_t generation) {
 
 } // namespace
 
+bool RewriteGpcmSend(std::uint32_t wiiFd, std::uint16_t peerPort,
+                     const std::uint8_t* data, std::size_t size,
+                     std::vector<std::uint8_t>& rewritten) noexcept {
+    rewritten.clear();
+    if (!ShouldObserve(peerPort) || !data || size == 0) {
+        return false;
+    }
+
+    try {
+        std::string packet(reinterpret_cast<const char*>(data), size);
+        const bool openHost = mkwvc::embeddedVoiceOpenHostEnabled();
+        constexpr std::string_view marker = "\\wl:oh\\";
+        bool nativeSettingFound = false;
+        bool nativeSetting = false;
+        bool changed = false;
+
+        std::size_t search = 0;
+        while (true) {
+            const std::size_t key = packet.find(marker, search);
+            if (key == std::string::npos) break;
+            const std::size_t value = key + marker.size();
+            if (value < packet.size() &&
+                (packet[value] == '0' || packet[value] == '1')) {
+                if (!nativeSettingFound) {
+                    nativeSettingFound = true;
+                    nativeSetting = packet[value] == '1';
+                }
+                const char desired = openHost ? '1' : '0';
+                if (packet[value] != desired) {
+                    packet[value] = desired;
+                    changed = true;
+                }
+            }
+            search = value + 1;
+        }
+
+        bool injectOverride = false;
+        {
+            std::lock_guard<std::mutex> lock(g_mutex);
+            SocketState& socket = g_sockets[wiiFd];
+            if (!nativeSettingFound &&
+                socket.openHostOverridePending &&
+                g_identitySocket == wiiFd &&
+                packet.find(kFinal) != std::string::npos &&
+                packet.find("\\logout\\") == std::string::npos) {
+                injectOverride = true;
+            }
+        }
+
+        if (nativeSettingFound) {
+            mkwvc::setEmbeddedVoiceNativeOpenHost(nativeSetting);
+        }
+
+        if (injectOverride) {
+            packet += "\\updatepro\\\\wl:oh\\";
+            packet.push_back(openHost ? '1' : '0');
+            packet += "\\final\\";
+            changed = true;
+        }
+
+        if (!changed) {
+            return false;
+        }
+
+        rewritten.assign(packet.begin(), packet.end());
+        return true;
+    } catch (...) {
+        return false;
+    }
+}
+
+void ConfirmGpcmRewriteSent(std::uint32_t wiiFd, std::uint16_t peerPort) noexcept {
+    if (!ShouldObserve(peerPort)) return;
+    bool confirmed = false;
+    try {
+        {
+            std::lock_guard<std::mutex> lock(g_mutex);
+            const auto found = g_sockets.find(wiiFd);
+            if (found == g_sockets.end()) return;
+            found->second.openHostOverridePending = false;
+            confirmed = true;
+        }
+        if (confirmed) {
+            mkwvc::requestEmbeddedVoiceOpenHostRefresh();
+        }
+    } catch (...) {
+    }
+}
+
+void RequestOpenHostOverrideRefresh() noexcept {
+    try {
+        std::lock_guard<std::mutex> lock(g_mutex);
+        if (g_identitySocket == UINT32_MAX) return;
+        g_sockets[g_identitySocket].openHostOverridePending = true;
+    } catch (...) {
+    }
+}
+
 void ObserveGpcmSend(std::uint32_t wiiFd, std::uint16_t peerPort,
                      const std::uint8_t* data, std::size_t size) noexcept {
     if (!ShouldObserve(peerPort)) {
@@ -1979,6 +2097,7 @@ RoomSnapshot Room() {
         player.name=source.displayName;
         player.friendCode=source.friendCode;
         player.voiceChat=source.voiceChat;
+        player.openHost=source.openHost;
         player.isFriend=IsFriendProfileId(friendProfileIds,source.profileId);
         room.players.push_back(std::move(player));
     }
