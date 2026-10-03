@@ -1,0 +1,161 @@
+name: MKW VoiceChat 0.14.7 One-Off Release
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  release-windows:
+    runs-on: windows-latest
+    env:
+      MKWVC_RELEASE_TAG: v0.14.7
+      MKWVC_RELEASE_SHA: 1eed3ceeb66e2bde44e2335cc4e51dfcf1eac2b2
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.MKWVC_RELEASE_SHA }}
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Verify central version metadata
+        shell: pwsh
+        run: |
+          $meta = Get-Content "version.json" -Raw | ConvertFrom-Json
+          $version = [string]$meta.productVersion
+          if ($version -ne "0.14.7") { throw "version.json productVersion must be 0.14.7." }
+          if ([int]$meta.schemaVersion -ne 1) { throw "Unsupported version.json schema." }
+          if ([string]$meta.patchRevision -notmatch '^[A-Za-z0-9._-]+$') { throw "Invalid patchRevision." }
+          if ([int]$meta.protocolVersion -lt 1) { throw "Invalid protocolVersion." }
+          if ([string]$meta.wiiCompiledVersion -notmatch '^\d+\.\d+\.\d+$') { throw "Invalid wiiCompiledVersion." }
+
+          "MKWVC_RELEASE_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "MKWVC_PATCH_REVISION=$([string]$meta.patchRevision)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "MKWVC_PROTOCOL_VERSION=$([int]$meta.protocolVersion)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "MKWVC_WIICOMPILED_VERSION=$([string]$meta.wiiCompiledVersion)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Create release tag
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $payload = @{
+            ref = "refs/tags/$env:MKWVC_RELEASE_TAG"
+            sha = $env:MKWVC_RELEASE_SHA
+          } | ConvertTo-Json
+          $payload | gh api --method POST "repos/$env:GITHUB_REPOSITORY/git/refs" --input -
+
+      - name: Download pinned public speech fixture
+        shell: python
+        run: |
+          import hashlib
+          import urllib.request
+          from pathlib import Path
+          data=urllib.request.urlopen("https://raw.githubusercontent.com/ggml-org/whisper.cpp/d09f61a708f3487afa956ff578e60eae5e7a233c/samples/jfk.wav",timeout=60).read()
+          assert hashlib.sha256(data).hexdigest()=="59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e"
+          Path("tests/jfk.wav").write_bytes(data)
+
+      - name: Run native audio regression
+        shell: pwsh
+        run: |
+          cmake -S tests -B audio-tests -DMKWVC_TEST_SPEECH="$env:GITHUB_WORKSPACE/tests/jfk.wav" -DCMAKE_BUILD_TYPE=Release
+          cmake --build audio-tests --config Release --parallel 2
+          ctest --test-dir audio-tests -C Release --output-on-failure
+
+      - name: Validate signaling worker syntax
+        run: node --check signaling_worker/src/index.js
+
+      - name: Build installer
+        run: dotnet build patcher/MKWVoiceChat.Patcher/MKWVoiceChat.Patcher.csproj -c Release
+
+      - name: Verify installer RNNoise payload is self-contained
+        shell: pwsh
+        run: |
+          $root = Join-Path $env:RUNNER_TEMP "mkwvc-rnnoise-payload"
+          $build = Join-Path $env:RUNNER_TEMP "mkwvc-rnnoise-payload-build"
+          Remove-Item $root,$build -Recurse -Force -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Path $root | Out-Null
+          Copy-Item "third_party/rnnoise" (Join-Path $root "rnnoise") -Recurse
+          if (!(Test-Path (Join-Path $root "rnnoise/src/rnnoise_data.c"))) { throw "Generated RNNoise model missing before payload test." }
+          @"
+          cmake_minimum_required(VERSION 3.20)
+          project(mkwvc_payload C)
+          add_subdirectory(rnnoise)
+          "@ | Set-Content (Join-Path $root "CMakeLists.txt")
+          cmake -S $root -B $build
+          if ($LASTEXITCODE -ne 0) { throw "Installer RNNoise payload requires unavailable source-tree tooling." }
+
+      - name: Verify central build version
+        run: dotnet run --project patcher/MKWVoiceChat.Patcher/MKWVoiceChat.Patcher.csproj -c Release --no-build -- selftest-version
+
+      - name: Verify bootstrap updater
+        shell: pwsh
+        run: |
+          & "patcher/MKWVoiceChat.Patcher/obj/embedded-updater/Release/MKWVoiceChat-Updater.exe" --selftest
+          if ($LASTEXITCODE -ne 0) { throw "Bootstrap updater self-test failed." }
+
+      - name: Verify bootstrap discovery
+        run: dotnet run --project patcher/MKWVoiceChat.Patcher/MKWVoiceChat.Patcher.csproj -c Release --no-build -- selftest-bootstrap
+
+      - name: Verify patch against configured official WiiCompiled base
+        shell: pwsh
+        run: |
+          git clone --depth 1 --branch "v$env:MKWVC_WIICOMPILED_VERSION" https://github.com/patchzyy/Wiicompiled.git upstream-wiicompiled
+          dotnet run --project patcher/MKWVoiceChat.Patcher/MKWVoiceChat.Patcher.csproj -c Release --no-build -- selftest-patch upstream-wiicompiled
+          git -C upstream-wiicompiled diff --exit-code
+
+      - name: Publish installer
+        shell: pwsh
+        run: |
+          dotnet publish "patcher/MKWVoiceChat.Patcher/MKWVoiceChat.Patcher.csproj" `
+            -c Release `
+            -r win-x64 `
+            --self-contained true `
+            -p:PublishSingleFile=true `
+            -o "dist"
+
+      - name: Generate release manifest
+        shell: pwsh
+        run: |
+          $exe = Join-Path $PWD "dist/WiiCompiled-VoiceChat-Installer.exe"
+          if (!(Test-Path $exe)) { throw "Published installer is missing." }
+
+          $sha = (Get-FileHash $exe -Algorithm SHA256).Hash.ToLowerInvariant()
+
+          $manifest = [ordered]@{
+            schemaVersion = 1
+            version = $env:MKWVC_RELEASE_VERSION
+            patchRevision = $env:MKWVC_PATCH_REVISION
+            minimumProtocol = [int]$env:MKWVC_PROTOCOL_VERSION
+            wiiCompiledVersion = $env:MKWVC_WIICOMPILED_VERSION
+            installerUrl = "https://github.com/$env:GITHUB_REPOSITORY/releases/latest/download/WiiCompiled-VoiceChat-Installer.exe"
+            installerSha256 = $sha
+            releasePageUrl = "https://github.com/$env:GITHUB_REPOSITORY/releases/latest"
+          }
+
+          $manifest | ConvertTo-Json | Set-Content "dist/mkwvc-release.json" -Encoding utf8
+          Compress-Archive -Path "LICENSE","THIRD-PARTY-NOTICES.md","dist/RNNoise-LICENSE.txt" -DestinationPath "dist/Licenses.zip" -Force
+
+      - name: Publish GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$env:MKWVC_RELEASE_TAG" `
+            "dist/WiiCompiled-VoiceChat-Installer.exe" `
+            "dist/mkwvc-release.json" `
+            "dist/Licenses.zip" `
+            --repo "$env:GITHUB_REPOSITORY" `
+            --verify-tag `
+            --latest `
+            --generate-notes `
+            --title "MKW VoiceChat $env:MKWVC_RELEASE_VERSION"
