@@ -31,6 +31,7 @@ If you don't trust it, don't use it, or read the source and build it yourself (s
 - Speaker overlay with friend/muted/deafened state and a local status indicator
 - Microphone loopback test and output test tone
 - Update check in-game, separate updater with SHA-256 verification
+- Global Voice Chat online count, plus an online-user list for users whose Retro Rewind license/profile and friend code can be resolved
 
 ## Supported versions
 
@@ -38,13 +39,15 @@ Defined in [`version.json`](version.json):
 
 | | |
 |---|---|
-| MKW VoiceChat | 0.14.4 |
+| MKW VoiceChat | 0.14.6 |
 | Protocol | 1 |
 | WiiCompiled base | 0.2.33 |
 
 The installer only builds against this exact WiiCompiled version. When a new WiiCompiled version is released, installing is blocked until an MKW VoiceChat update supporting it is available.
 
-Until then, the existing Voicechat build will most likely not be able to connect to WFC, so you'll have to play the official build through Wheel Wizard without voice chat. You don't need to uninstall the Voicechat build or clean up any files. The next MKW VoiceChat release will update everything automatically.
+If a newer official WiiCompiled version is released before a matching MKW VoiceChat build is available, the game can still start, but Voice Chat is disabled for that process. The Voice Chat tab shows the version mismatch and keeps the update button disabled until a compatible MKW VoiceChat release is available.
+
+Once a matching release is available, the update button becomes available and the installed updater can update the Voice Chat build. You do not need to manually uninstall the old build first.
 
 ## Installation
 
@@ -75,7 +78,9 @@ Press **F10** in-game and open **Voice Chat**. Everything is configured there: e
 ## Privacy
 
 - Voice is sent peer-to-peer, like Retro Rewind's own online play. The client only connects to players in your current Retro Rewind room, who can already see your IP address through in-game traffic. Room membership is not authenticated yet though, so a modified client could join a voice room by claiming a player ID from the public RWFC room list and see the IP addresses of its voice participants.
-- Your Retro Rewind profile ID, name and friend code are sent to the signaling server to match you with your room. The session key is kept in memory only and is never saved or logged.
+- While Voice Chat is enabled, the client maintains a signaling presence connection used for the global online count. The count includes connected MKW VoiceChat clients even when they are not currently in a Retro Rewind room.
+- If your current Retro Rewind profile/license can be resolved, your profile ID, display name and friend code are used by the signaling service and may be included in the global online-user list shown to other MKW VoiceChat users. Clients without a resolved profile/friend code are still counted, but are not shown in that list.
+- The Retro Rewind session key is kept in memory only and is never included in the online-user list.
 
 ## Known limitations
 
@@ -100,7 +105,7 @@ Self-tests (same as CI):
 ```powershell
 dotnet run --project patcher/MKWVoiceChat.Patcher -c Release -- selftest-version
 dotnet run --project patcher/MKWVoiceChat.Patcher -c Release -- selftest-bootstrap
-git clone --depth 1 --branch v0.2.32 https://github.com/patchzyy/Wiicompiled.git upstream
+git clone --depth 1 --branch v0.2.33 https://github.com/patchzyy/Wiicompiled.git upstream
 dotnet run --project patcher/MKWVoiceChat.Patcher -c Release -- selftest-patch upstream
 ```
 
