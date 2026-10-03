@@ -79,6 +79,7 @@ struct EmbeddedPeerLink {
 struct EmbeddedVoiceSessionState {
     std::mutex mutex;
     std::unique_ptr<mkwvc::SignalingClient> signaling;
+    std::unique_ptr<mkwvc::SignalingClient> presenceSignaling;
     std::unique_ptr<mkwvc::VoiceClient> voiceClient;
     std::unique_ptr<mkwvc::MicrophoneTest> microphoneTestRuntime;
     mkwvc::EmbeddedVoiceSessionStatus status;
@@ -130,6 +131,8 @@ struct EmbeddedVoiceSessionState {
     bool settingsLoaded=false;
     std::uint64_t identityGeneration = 0;
     std::chrono::steady_clock::time_point nextReconnect{};
+    std::chrono::steady_clock::time_point presenceNextReconnect{};
+    std::string presenceProfileId;
 };
 
 EmbeddedVoiceSessionState& voiceSessionState() {
@@ -524,6 +527,32 @@ bool parseAdmission(
     return localFound && !roomId.empty() && !created.empty();
 }
 
+std::vector<mkwvc::EmbeddedVoiceOnlineUser> parseOnlineRoster(
+    std::string_view payload) {
+    std::vector<mkwvc::EmbeddedVoiceOnlineUser> users;
+    for(const auto line:splitLines(payload)) {
+        if(line.empty()) continue;
+        const auto first=line.find('\t');
+        const auto second=first==std::string_view::npos
+            ? std::string_view::npos
+            : line.find('\t',first+1);
+        if(first==std::string_view::npos ||
+           second==std::string_view::npos) {
+            continue;
+        }
+
+        mkwvc::EmbeddedVoiceOnlineUser user;
+        user.profileId=std::string(line.substr(0,first));
+        user.displayName=decodeHex(
+            line.substr(first+1,second-first-1));
+        user.friendCode=std::string(line.substr(second+1));
+        if(user.profileId.empty() || user.friendCode.empty()) continue;
+        if(user.displayName.empty()) user.displayName="Player";
+        users.push_back(std::move(user));
+    }
+    return users;
+}
+
 bool parseDevelopmentPeer(
     std::string_view payload,
     std::string_view expectedRoomInstanceId,
@@ -573,7 +602,11 @@ void clearVoiceNetworkSessionLocked(
     state.iceServers={"stun:stun.l.google.com:19302"};
     state.identityGeneration = 0;
     state.nextReconnect = {};
+    const auto onlineUserCount=state.status.onlineUserCount;
+    auto onlineUsers=std::move(state.status.onlineUsers);
     state.status = {};
+    state.status.onlineUserCount=onlineUserCount;
+    state.status.onlineUsers=std::move(onlineUsers);
     state.status.status = std::move(status);
 }
 
@@ -581,7 +614,12 @@ void clearVoiceSessionLocked(
     EmbeddedVoiceSessionState& state,
     std::string status) {
     stopMicrophoneTestRuntime(state);
+    state.presenceSignaling.reset();
+    state.presenceNextReconnect={};
+    state.presenceProfileId.clear();
     clearVoiceNetworkSessionLocked(state,std::move(status));
+    state.status.onlineUserCount=0;
+    state.status.onlineUsers.clear();
 }
 
 void resetPeerTransport(
@@ -857,6 +895,7 @@ void serviceEmbeddedVoiceSession(const EmbeddedVoiceSessionInput& input) noexcep
                     ? "Voice Chat temporarily unavailable"
                     : state.runtimeBlockReason;
             if(state.signaling ||
+               state.presenceSignaling ||
                state.voiceClient ||
                state.microphoneTestRuntime ||
                state.status.lifecycleActive) {
@@ -868,12 +907,83 @@ void serviceEmbeddedVoiceSession(const EmbeddedVoiceSessionInput& input) noexcep
         }
 
         if(!state.enabled) {
-            if(state.signaling || state.voiceClient || state.microphoneTestRuntime || state.status.lifecycleActive) {
+            if(state.signaling || state.presenceSignaling || state.voiceClient || state.microphoneTestRuntime || state.status.lifecycleActive) {
                 clearVoiceSessionLocked(state,"Disabled");
             } else {
                 state.status.status="Disabled";
             }
             return;
+        }
+
+        const auto presenceNow=std::chrono::steady_clock::now();
+        if(!state.presenceSignaling &&
+           (state.presenceNextReconnect==std::chrono::steady_clock::time_point{} ||
+            presenceNow>=state.presenceNextReconnect)) {
+            try {
+                state.presenceSignaling=
+                    std::make_unique<SignalingClient>(
+                        std::string(kSignalingUrl));
+            } catch(...) {
+                state.presenceNextReconnect=presenceNow+kReconnectDelay;
+                state.status.onlineUserCount=0;
+            }
+        }
+
+        if(state.presenceSignaling) {
+            state.presenceSignaling->service();
+            bool resetPresence=false;
+            for(auto& event:state.presenceSignaling->takeEvents()) {
+                switch(event.type) {
+                    case SignalingEventType::Open:
+                        try {
+                            state.presenceSignaling->setVoiceOnlinePresence(true);
+                        } catch(...) {
+                            resetPresence=true;
+                        }
+                        break;
+                    case SignalingEventType::RetroRewindOnlineCount: {
+                        std::uint32_t count=0;
+                        const auto parsed=std::from_chars(
+                            event.payload.data(),
+                            event.payload.data()+event.payload.size(),
+                            count);
+                        if(parsed.ec==std::errc{} &&
+                           parsed.ptr==event.payload.data()+event.payload.size()) {
+                            state.status.onlineUserCount=count;
+                        }
+                        break;
+                    }
+                    case SignalingEventType::RetroRewindOnlineRoster:
+                        state.status.onlineUsers=parseOnlineRoster(event.payload);
+                        break;
+                    case SignalingEventType::TransportError:
+                    case SignalingEventType::Closed:
+                    case SignalingEventType::Error:
+                        resetPresence=true;
+                        break;
+                    default:
+                        break;
+                }
+            }
+            if(!resetPresence &&
+               state.presenceSignaling->open() &&
+               state.presenceProfileId!=input.profileId) {
+                try {
+                    state.presenceSignaling->setVoiceOnlineIdentity(
+                        input.profileId);
+                    state.presenceProfileId=input.profileId;
+                } catch(...) {
+                    resetPresence=true;
+                }
+            }
+
+            if(resetPresence) {
+                state.presenceSignaling.reset();
+                state.presenceNextReconnect=presenceNow+kReconnectDelay;
+                state.presenceProfileId.clear();
+                state.status.onlineUserCount=0;
+                state.status.onlineUsers.clear();
+            }
         }
 
         const bool active =
@@ -902,7 +1012,11 @@ void serviceEmbeddedVoiceSession(const EmbeddedVoiceSessionInput& input) noexcep
             state.iceServers={"stun:stun.l.google.com:19302"};
             state.identityGeneration = input.identityGeneration;
             state.nextReconnect = {};
+            const auto onlineUserCount=state.status.onlineUserCount;
+            auto onlineUsers=std::move(state.status.onlineUsers);
             state.status = {};
+            state.status.onlineUserCount=onlineUserCount;
+            state.status.onlineUsers=std::move(onlineUsers);
         }
 
         state.status.lifecycleActive = true;
@@ -972,6 +1086,18 @@ void serviceEmbeddedVoiceSession(const EmbeddedVoiceSessionInput& input) noexcep
                 case SignalingEventType::IceServers:
                     state.iceServers=parseIceServers(event.payload);
                     break;
+                case SignalingEventType::RetroRewindOnlineCount: {
+                    std::uint32_t count=0;
+                    const auto parsed=std::from_chars(
+                        event.payload.data(),
+                        event.payload.data()+event.payload.size(),
+                        count);
+                    if(parsed.ec==std::errc{} &&
+                       parsed.ptr==event.payload.data()+event.payload.size()) {
+                        state.status.onlineUserCount=count;
+                    }
+                    break;
+                }
                 case SignalingEventType::RetroRewindDevelopmentAdmitted: {
                     std::string memberId;
                     std::string admittedRoom;

@@ -17,6 +17,8 @@ enum class SignalingEventType {
     Signal,
     PeerLeft,
     RetroRewindStatus,
+    RetroRewindOnlineCount,
+    RetroRewindOnlineRoster,
     RetroRewindDebugStatus,
     RetroRewindDebugFailed,
     RetroRewindAuthFailed,
@@ -47,6 +49,8 @@ public:
     SignalingClient& operator=(const SignalingClient&)=delete;
 
     void setRoomNone();
+    void setVoiceOnlinePresence(bool online);
+    void setVoiceOnlineIdentity(std::string profileId);
     void setRoomCreate(std::string memberId,std::string displayName);
     void setRoomJoin(std::string roomCode,std::string memberId,std::string displayName);
     void sendSignal(std::string signal);

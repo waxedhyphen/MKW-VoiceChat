@@ -35,6 +35,12 @@ struct EmbeddedVoiceRoomPlayer {
     bool voiceChat = false;
 };
 
+struct EmbeddedVoiceOnlineUser {
+    std::string profileId;
+    std::string displayName;
+    std::string friendCode;
+};
+
 struct EmbeddedVoiceSessionStatus {
     bool lifecycleActive = false;
     bool signalingConnected = false;
@@ -46,6 +52,8 @@ struct EmbeddedVoiceSessionStatus {
     bool roomFound = false;
     std::uint32_t developmentPeerCount = 0;
     std::uint32_t peerCount = 0;
+    std::uint32_t onlineUserCount = 0;
+    std::vector<EmbeddedVoiceOnlineUser> onlineUsers;
     std::string roomId;
     std::string roomInstanceId;
     std::string roomCreated;

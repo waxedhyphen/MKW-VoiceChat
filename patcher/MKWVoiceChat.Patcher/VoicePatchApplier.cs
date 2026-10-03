@@ -829,7 +829,7 @@ void DrawVoiceChatOverlay() {
     else if(controls.deafened) status=""DEAFENED"";
     else if(controls.microphoneMuted) status=""MUTED"";
     else if(controls.pushToMute && controls.pushToMuteHeld) status=""PUSH-TO-MUTE"";
-    else if(controls.localSpeaking) status=""SPEAKING"";
+    else if(controls.localSpeaking) status=""Speaking"";
     else if(controls.pushToTalk) status=controls.pushToTalkHeld ? ""PTT ACTIVE"" : ""PTT READY"";
     else if(controls.voiceActivation) status=""VOICE ACTIVATION"";
     else status=session.voiceClientRunning ? ""VOICE READY"" : ""VOICE IDLE"";
@@ -843,6 +843,11 @@ void DrawVoiceChatOverlay() {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding,ImVec2(12.0f,8.0f));
 
     const bool alert=controls.microphoneMuted || controls.deafened;
+    const bool speaking=
+        controls.localSpeaking &&
+        !updateRequired &&
+        !alert &&
+        !(controls.pushToMute && controls.pushToMuteHeld);
     if(updateRequired) {
         ImGui::PushStyleColor(
             ImGuiCol_WindowBg,
@@ -851,6 +856,10 @@ void DrawVoiceChatOverlay() {
         ImGui::PushStyleColor(
             ImGuiCol_WindowBg,
             ImVec4(0.55f,0.05f,0.05f,0.92f));
+    } else if(speaking) {
+        ImGui::PushStyleColor(
+            ImGuiCol_WindowBg,
+            ImVec4(0.04f,0.48f,0.12f,0.94f));
     }
 
     const ImGuiWindowFlags localFlags=
@@ -873,13 +882,14 @@ void DrawVoiceChatOverlay() {
         ImGui::SetWindowFontScale(1.0f);
     }
     ImGui::End();
-    if(updateRequired || alert) ImGui::PopStyleColor();
+    if(updateRequired || alert || speaking) ImGui::PopStyleColor();
     ImGui::PopStyleVar();
 }
 
 void DrawVoiceChatSettings() {
     auto controls=mkwvc::embeddedVoiceControls();
     const auto release=RetroRewindVoiceBridge::Release();
+    const auto session=mkwvc::embeddedVoiceSessionStatus();
     const bool updateRequired=
         release.checkComplete &&
         release.updateAvailable;
@@ -893,11 +903,24 @@ void DrawVoiceChatSettings() {
     ImGui::EndDisabled();
 
     ImGui::TextUnformatted(""Retro Rewind voice integration"");
-    ImGui::TextDisabled(
+    ImGui::PushStyleColor(
+        ImGuiCol_Text,
+        ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
+    ImGui::TextWrapped(
         ""MKW Voice Chat %s | Integration: %s"",
         RetroRewindVoiceBridge::kMkwVoiceChatVersion,
         RetroRewindVoiceBridge::kMkwVoiceChatPatchRevision);
-    ImGui::Text(
+    ImGui::PopStyleColor();
+    if(session.onlineUserCount>0) {
+        ImGui::PushStyleColor(
+            ImGuiCol_Text,
+            ImVec4(1.0f,0.82f,0.18f,1.0f));
+        ImGui::TextWrapped(
+            ""You are now online. Voice chat users online: %u"",
+            session.onlineUserCount);
+        ImGui::PopStyleColor();
+    }
+    ImGui::TextWrapped(
         ""Update status: %s"",
         release.status.empty() ? ""Checking..."" : release.status.c_str());
 
@@ -962,10 +985,27 @@ void DrawVoiceChatSettings() {
             ""Voice Chat has been disabled for this process until MKW Voice Chat is updated. Your saved Enabled setting was not changed."");
         ImGui::PopStyleColor();
 
-        if(ImGui::Button(""Update MKW Voice Chat"")) {
-            if(RetroRewindVoiceBridge::LaunchInstalledUpdater()) {
-                ExitForAuroraWindowClose();
-            }
+        const bool matchingVoiceChatUpdateUnavailable=
+            release.wiiCompiledUpdateRequired &&
+            !release.latestOfficialWiiCompiledVersion.empty() &&
+            !release.requiredWiiCompiledVersion.empty() &&
+            release.requiredWiiCompiledVersion!=
+                release.latestOfficialWiiCompiledVersion;
+
+        ImGui::BeginDisabled(matchingVoiceChatUpdateUnavailable);
+        const bool updateClicked=
+            ImGui::Button(""Update MKW Voice Chat"");
+        ImGui::EndDisabled();
+
+        if(matchingVoiceChatUpdateUnavailable &&
+           ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+            ImGui::SetTooltip(
+                ""A matching MKW Voice Chat update for this WiiCompiled version is not available yet. Please check again later."");
+        }
+
+        if(updateClicked &&
+           RetroRewindVoiceBridge::LaunchInstalledUpdater()) {
+            ExitForAuroraWindowClose();
         }
         return;
     }
@@ -989,8 +1029,6 @@ void DrawVoiceChatSettings() {
         RetroRewindVoiceBridge::Snapshot();
     const RetroRewindVoiceBridge::RoomSnapshot room =
         RetroRewindVoiceBridge::Room();
-    const mkwvc::EmbeddedVoiceSessionStatus session =
-        mkwvc::embeddedVoiceSessionStatus();
 
     const auto playerNameFor=[&](const std::string& profileId) {
         for(const auto& player:room.players) {
@@ -1486,6 +1524,39 @@ void DrawVoiceChatSettings() {
         }
     }
 
+    ImGui::PushStyleColor(
+        ImGuiCol_Text,
+        ImVec4(1.0f,0.82f,0.18f,1.0f));
+    ImGui::PushStyleColor(
+        ImGuiCol_Header,
+        ImVec4(0.48f,0.33f,0.03f,0.78f));
+    ImGui::PushStyleColor(
+        ImGuiCol_HeaderHovered,
+        ImVec4(0.62f,0.43f,0.04f,0.88f));
+    ImGui::PushStyleColor(
+        ImGuiCol_HeaderActive,
+        ImVec4(0.74f,0.52f,0.05f,0.94f));
+    const bool onlineUsersOpen=
+        ImGui::CollapsingHeader(""Online Voice Chat users"");
+    ImGui::PopStyleColor(4);
+
+    if(onlineUsersOpen) {
+        ImGui::Indent();
+        if(session.onlineUsers.empty()) {
+            ImGui::TextDisabled(
+                ""No online users currently have a resolved license and Friend Code."");
+        } else {
+            for(const auto& user:session.onlineUsers) {
+                ImGui::Bullet();
+                ImGui::SameLine();
+                ImGui::TextUnformatted(user.displayName.c_str());
+                ImGui::SameLine(0.0f,4.0f);
+                ImGui::TextDisabled(""[%s]"",user.friendCode.c_str());
+            }
+        }
+        ImGui::Unindent();
+    }
+
     if(ImGui::CollapsingHeader(""Debug"")) {
         ImGui::Indent();
 
@@ -1547,9 +1618,11 @@ void DrawVoiceChatSettings() {
             text,
             "    const std::string audioLabel = g_audioMuted\n",
             "    if (RuntimeProduct::IsRetroRewind()) {\n" +
+            "        const float voiceMenuAvailable=ImGui::GetMainViewport()->WorkSize.x-24.0f;\n" +
+            "        const float voiceMenuWidth=voiceMenuAvailable<280.0f ? 280.0f : (voiceMenuAvailable>560.0f ? 560.0f : voiceMenuAvailable);\n" +
             "        ImGui::SetNextWindowSizeConstraints(\n" +
-            "            ImVec2(430.0f, 0.0f),\n" +
-            "            ImVec2(430.0f, ImGui::GetMainViewport()->WorkSize.y));\n" +
+            "            ImVec2(voiceMenuWidth, 0.0f),\n" +
+            "            ImVec2(voiceMenuWidth, ImGui::GetMainViewport()->WorkSize.y));\n" +
             "        if (ImGui::BeginMenu(\"Voice Chat\")) {\n" +
             "            DrawVoiceChatSettings();\n" +
             "            ImGui::EndMenu();\n" +

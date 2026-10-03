@@ -51,6 +51,7 @@ public:
                 open_=true;
                 roomHeartbeatEnabled_=false;
                 rrHeartbeatEnabled_=false;
+                voicePresenceHeartbeatEnabled_=false;
                 nextHeartbeat_=std::chrono::steady_clock::now()+std::chrono::seconds(60);
                 socket=socket_;
                 pending.swap(pending_);
@@ -100,6 +101,33 @@ public:
 
     void setRoomNone() {
         sendCommand("LEAVE");
+    }
+
+    void setVoiceOnlinePresence(bool online) {
+        {
+            std::scoped_lock lock(mutex_);
+            voicePresenceHeartbeatEnabled_=online;
+            if(online) {
+                nextHeartbeat_=std::chrono::steady_clock::now()+std::chrono::seconds(60);
+            }
+        }
+        sendCommand(online ? "VOICE_ONLINE" : "VOICE_OFFLINE");
+    }
+
+    void setVoiceOnlineIdentity(std::string profileId) {
+        profileId.erase(
+            std::remove_if(profileId.begin(),profileId.end(),[](unsigned char ch){return std::isspace(ch)!=0;}),
+            profileId.end()
+        );
+        if(profileId.empty()) {
+            sendCommand("VOICE_IDENTITY_CLEAR");
+            return;
+        }
+        if(profileId.size()>10 ||
+           !std::all_of(profileId.begin(),profileId.end(),[](unsigned char ch){return std::isdigit(ch)!=0;})) {
+            throw std::invalid_argument("Voice presence profile ID must be a decimal uint32 value");
+        }
+        sendCommand("VOICE_IDENTITY "+profileId);
     }
 
     void setRoomCreate(std::string memberId,std::string displayName) {
@@ -315,7 +343,9 @@ public:
             std::scoped_lock lock(mutex_);
             const auto now=std::chrono::steady_clock::now();
             if(closed_ || !open_ ||
-               (!roomHeartbeatEnabled_ && !rrHeartbeatEnabled_) ||
+               (!roomHeartbeatEnabled_ &&
+                !rrHeartbeatEnabled_ &&
+                !voicePresenceHeartbeatEnabled_) ||
                now<nextHeartbeat_) {
                 return;
             }
@@ -397,6 +427,10 @@ private:
             pushEvent(SignalingEventType::PeerLeft,{});
         } else if(message.starts_with("PEER_LEFT ")) {
             pushEvent(SignalingEventType::PeerLeft,message.substr(10));
+        } else if(message.starts_with("RR_ONLINE_COUNT ")) {
+            pushEvent(SignalingEventType::RetroRewindOnlineCount,message.substr(16));
+        } else if(message.starts_with("RR_ONLINE_ROSTER\n")) {
+            pushEvent(SignalingEventType::RetroRewindOnlineRoster,message.substr(17));
         } else if(message.starts_with("RR_STATUS\n")) {
             pushEvent(SignalingEventType::RetroRewindStatus,message.substr(10));
         } else if(message.starts_with("RR_DEBUG_STATUS\n")) {
@@ -454,12 +488,15 @@ private:
     bool closed_=false;
     bool roomHeartbeatEnabled_=false;
     bool rrHeartbeatEnabled_=false;
+    bool voicePresenceHeartbeatEnabled_=false;
     std::chrono::steady_clock::time_point nextHeartbeat_{};
 };
 
 SignalingClient::SignalingClient(std::string serverUrl):impl_(std::make_unique<Impl>(std::move(serverUrl))) {}
 SignalingClient::~SignalingClient()=default;
 void SignalingClient::setRoomNone(){impl_->setRoomNone();}
+void SignalingClient::setVoiceOnlinePresence(bool online){impl_->setVoiceOnlinePresence(online);}
+void SignalingClient::setVoiceOnlineIdentity(std::string profileId){impl_->setVoiceOnlineIdentity(std::move(profileId));}
 void SignalingClient::setRoomCreate(std::string memberId,std::string displayName){impl_->setRoomCreate(std::move(memberId),std::move(displayName));}
 void SignalingClient::setRoomJoin(std::string roomCode,std::string memberId,std::string displayName){impl_->setRoomJoin(std::move(roomCode),std::move(memberId),std::move(displayName));}
 void SignalingClient::sendSignal(std::string signal){impl_->sendSignal(std::move(signal));}

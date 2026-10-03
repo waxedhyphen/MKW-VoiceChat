@@ -1116,7 +1116,7 @@ void ShowWiiCompiledVersionMismatch() {
 
     MessageBoxW(
         nullptr,
-        L"This version does not match the official WiiCompiled version. Wait for an update for Voicechat and reinstall the installer through GitHub.",
+        L"A newer WiiCompiled version is available. Open the Voice Chat tab to check whether a matching MKW Voice Chat update is available.",
         L"MKW Voice Chat",
         MB_OK|MB_ICONERROR|MB_SETFOREGROUND);
 }

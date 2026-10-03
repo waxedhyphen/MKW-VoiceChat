@@ -12,7 +12,7 @@ const SESSION_SIGNAL_HARD_LIMIT=96;
 const ROOM_SIGNAL_LIMIT=64;
 const ROOM_HEARTBEAT_TIMEOUT_MS=90*1000;
 const LIVENESS_SWEEP_MS=30*1000;
-const WORKER_VERSION="roomstate-v18-fixed-liveness-sweep";
+const WORKER_VERSION="roomstate-v21-online-roster";
 const RR_GROUPS_URL="https://rwfc.net/api/wfc/groups";
 const RR_ROSTER_CACHE_MS=5000;
 const RR_AUTH_TTL_MS=10*60*1000;
@@ -49,7 +49,11 @@ function sessionOf(socket) {
             rrVoiceParticipantId:null,
             rrVoiceDisplayName:null,
             rrVoiceFriendCode:null,
-            rrVoiceMode:null
+            rrVoiceMode:null,
+            voiceOnline:false,
+            voiceProfileId:null,
+            voiceDisplayName:null,
+            voiceFriendCode:null
         };
     }
 
@@ -81,7 +85,11 @@ function sessionOf(socket) {
         rrVoiceParticipantId:typeof value.rrVoiceParticipantId==="string" ? value.rrVoiceParticipantId : null,
         rrVoiceDisplayName:typeof value.rrVoiceDisplayName==="string" ? value.rrVoiceDisplayName : null,
         rrVoiceFriendCode:typeof value.rrVoiceFriendCode==="string" ? value.rrVoiceFriendCode : null,
-        rrVoiceMode:value.rrVoiceMode==="production" || value.rrVoiceMode==="development" ? value.rrVoiceMode : null
+        rrVoiceMode:value.rrVoiceMode==="production" || value.rrVoiceMode==="development" ? value.rrVoiceMode : null,
+        voiceOnline:value.voiceOnline===true,
+        voiceProfileId:typeof value.voiceProfileId==="string" ? value.voiceProfileId : null,
+        voiceDisplayName:typeof value.voiceDisplayName==="string" ? value.voiceDisplayName : null,
+        voiceFriendCode:typeof value.voiceFriendCode==="string" ? value.voiceFriendCode : null
     };
 }
 
@@ -342,7 +350,11 @@ export class SignalingHub extends DurableObject {
             rrVoiceParticipantId:null,
             rrVoiceDisplayName:null,
             rrVoiceFriendCode:null,
-            rrVoiceMode:null
+            rrVoiceMode:null,
+            voiceOnline:false,
+            voiceProfileId:null,
+            voiceDisplayName:null,
+            voiceFriendCode:null
         });
 
         this.debug("ws_open",{session:sessionId.slice(0,8)});
@@ -520,6 +532,109 @@ export class SignalingHub extends DurableObject {
         return ids;
     }
 
+    rrVoiceOnlineSockets() {
+        return this.sockets().filter(socket=>sessionOf(socket).voiceOnline===true);
+    }
+
+    setVoiceOnlinePresence(socket,online) {
+        const current=sessionOf(socket);
+        updateSession(socket,{
+            voiceOnline:online,
+            voiceProfileId:online ? current.voiceProfileId : null,
+            voiceDisplayName:online ? current.voiceDisplayName : null,
+            voiceFriendCode:online ? current.voiceFriendCode : null,
+            lastHeartbeat:Date.now()
+        });
+        if(current.voiceOnline!==online || online) {
+            this.broadcastRrVoiceOnlineCount();
+        }
+    }
+
+    findVoiceMetadata(profileId) {
+        if(!profileId) return null;
+        for(const socket of this.sockets()) {
+            const session=sessionOf(socket);
+            if(session.rrVoiceParticipantId===profileId &&
+               session.rrVoiceFriendCode) {
+                return {
+                    displayName:session.rrVoiceDisplayName??"Player",
+                    friendCode:session.rrVoiceFriendCode
+                };
+            }
+        }
+        return null;
+    }
+
+    setVoiceOnlineIdentity(socket,profileId) {
+        const current=sessionOf(socket);
+        if(!current.voiceOnline) return;
+
+        if(!profileId) {
+            updateSession(socket,{
+                voiceProfileId:null,
+                voiceDisplayName:null,
+                voiceFriendCode:null
+            });
+            this.broadcastRrVoiceOnlineCount();
+            return;
+        }
+
+        const metadata=this.findVoiceMetadata(profileId);
+        updateSession(socket,{
+            voiceProfileId:profileId,
+            voiceDisplayName:metadata?.displayName??null,
+            voiceFriendCode:metadata?.friendCode??null
+        });
+        this.broadcastRrVoiceOnlineCount();
+    }
+
+    syncVoicePresenceMetadata(profileId,displayName,friendCode) {
+        if(!profileId || !friendCode) return;
+        for(const socket of this.rrVoiceOnlineSockets()) {
+            const current=sessionOf(socket);
+            if(current.voiceProfileId!==profileId) continue;
+            updateSession(socket,{
+                voiceDisplayName:String(displayName??"Player").slice(0,32),
+                voiceFriendCode:String(friendCode).replace(/[\\r\\n\\t]/g,"").slice(0,32)
+            });
+        }
+    }
+
+    broadcastRrVoiceOnlineCount() {
+        const sockets=this.rrVoiceOnlineSockets();
+        const countMessage="RR_ONLINE_COUNT "+sockets.length;
+
+        const rosterByProfile=new Map();
+        for(const socket of sockets) {
+            const session=sessionOf(socket);
+            if(!session.voiceProfileId ||
+               !session.voiceDisplayName ||
+               !session.voiceFriendCode ||
+               rosterByProfile.has(session.voiceProfileId)) {
+                continue;
+            }
+            rosterByProfile.set(session.voiceProfileId,{
+                profileId:session.voiceProfileId,
+                displayName:session.voiceDisplayName,
+                friendCode:session.voiceFriendCode
+            });
+        }
+
+        const roster=[...rosterByProfile.values()]
+            .sort((a,b)=>a.displayName.localeCompare(b.displayName));
+        const rosterMessage="RR_ONLINE_ROSTER\n"+roster
+            .map(user=>
+                user.profileId+"\t"+
+                encodeHexText(user.displayName)+"\t"+
+                user.friendCode)
+            .join("\n");
+
+        for(const socket of sockets) {
+            sendSafe(socket,countMessage);
+            sendSafe(socket,rosterMessage);
+        }
+    }
+
     rrVoiceMembers(roomInstanceId,mode=null) {
         if(!roomInstanceId) return [];
         return this.sockets().filter(socket=>{
@@ -556,6 +671,7 @@ export class SignalingHub extends DurableObject {
         if(mode && this.rrVoiceMembers(roomInstanceId,mode).length>0) {
             this.scheduleRrVoicePresence(roomInstanceId,mode,memberId);
         }
+        this.broadcastRrVoiceOnlineCount();
     }
 
     scheduleRrVoicePresence(roomInstanceId,mode,leftMemberId=null,joinedMemberId=null) {
@@ -658,6 +774,11 @@ export class SignalingHub extends DurableObject {
             sendSafe(socket,await this.iceServersMessage());
             sendSafe(socket,
                 "RR_ADMITTED "+current.rrVoiceMemberId+"\n"+requestedRoomInstanceId);
+            this.syncVoicePresenceMetadata(
+                current.rrVoiceParticipantId,
+                current.rrVoiceDisplayName,
+                current.rrVoiceFriendCode);
+            this.broadcastRrVoiceOnlineCount();
             return;
         }
 
@@ -695,6 +816,10 @@ export class SignalingHub extends DurableObject {
             signalsInRoom:0,
             lastHeartbeat:Date.now()
         });
+        this.syncVoicePresenceMetadata(
+            current.rrParticipantId,
+            player.name,
+            player.friendCode);
         await this.ensureLivenessAlarm();
 
         this.debug("rr_admit",{
@@ -712,6 +837,7 @@ export class SignalingHub extends DurableObject {
             "production",
             null,
             memberId);
+        this.broadcastRrVoiceOnlineCount();
     }
 
     sendRrDevelopmentAdmitted(socket,memberId,room) {
@@ -789,6 +915,11 @@ export class SignalingHub extends DurableObject {
                current.rrVoiceMode==="development") {
                 sendSafe(socket,await this.iceServersMessage());
                 this.sendRrDevelopmentAdmitted(socket,current.rrVoiceMemberId,room);
+                this.syncVoicePresenceMetadata(
+                    profileId,
+                    current.rrVoiceDisplayName,
+                    current.rrVoiceFriendCode);
+                this.broadcastRrVoiceOnlineCount();
                 return;
             }
 
@@ -832,6 +963,10 @@ export class SignalingHub extends DurableObject {
                 signalsInRoom:0,
                 lastHeartbeat:Date.now()
             });
+            this.syncVoicePresenceMetadata(
+                profileId,
+                player.name,
+                player.friendCode);
             await this.ensureLivenessAlarm();
 
             this.debug("rr_dev_admit",{
@@ -849,6 +984,7 @@ export class SignalingHub extends DurableObject {
                 "development",
                 null,
                 memberId);
+            this.broadcastRrVoiceOnlineCount();
         } catch(error) {
             this.leaveRrVoiceMembership(socket);
             this.debug("rr_dev_admit_error",{
@@ -1079,7 +1215,9 @@ export class SignalingHub extends DurableObject {
         const now=Date.now();
         const roomSockets=this.sockets().filter(socket=>{
             const session=sessionOf(socket);
-            return session.roomCode!==null || session.rrVoiceRoomInstanceId!==null;
+            return session.roomCode!==null ||
+                   session.rrVoiceRoomInstanceId!==null ||
+                   session.voiceOnline;
         });
 
         for(const socket of roomSockets) {
@@ -1094,6 +1232,7 @@ export class SignalingHub extends DurableObject {
 
             this.leaveMembership(socket);
             this.leaveRrVoiceMembership(socket);
+            if(session.voiceOnline) this.setVoiceOnlinePresence(socket,false);
             try {
                 socket.close(1001,"Liveness timeout");
             } catch {}
@@ -1101,7 +1240,9 @@ export class SignalingHub extends DurableObject {
 
         const remaining=this.sockets().filter(socket=>{
             const session=sessionOf(socket);
-            return session.roomCode!==null || session.rrVoiceRoomInstanceId!==null;
+            return session.roomCode!==null ||
+                   session.rrVoiceRoomInstanceId!==null ||
+                   session.voiceOnline;
         });
         if(remaining.length===0) return;
 
@@ -1528,6 +1669,32 @@ export class SignalingHub extends DurableObject {
         }
 
         try {
+            if(message==="VOICE_ONLINE") {
+                this.setVoiceOnlinePresence(socket,true);
+                await this.ensureLivenessAlarm();
+                return;
+            }
+
+            if(message==="VOICE_OFFLINE") {
+                this.setVoiceOnlinePresence(socket,false);
+                return;
+            }
+
+            if(message==="VOICE_IDENTITY_CLEAR") {
+                this.setVoiceOnlineIdentity(socket,null);
+                return;
+            }
+
+            if(message.startsWith("VOICE_IDENTITY ")) {
+                const profileId=message.slice(15).trim();
+                if(!validRrProfileId(profileId)) {
+                    sendSafe(socket,"ERROR Invalid voice presence profile ID");
+                    return;
+                }
+                this.setVoiceOnlineIdentity(socket,profileId);
+                return;
+            }
+
             if(message==="ALIVE") {
                 const current=sessionOf(socket);
                 if(current.rrVoiceMode==="production" &&
@@ -1536,7 +1703,9 @@ export class SignalingHub extends DurableObject {
                     sendSafe(socket,"RR_AUTH_REQUIRED");
                     return;
                 }
-                if(current.roomCode!==null || current.rrVoiceRoomInstanceId!==null) {
+                if(current.roomCode!==null ||
+                   current.rrVoiceRoomInstanceId!==null ||
+                   current.voiceOnline) {
                     updateSession(socket,{lastHeartbeat:Date.now()});
                 }
                 return;
@@ -1736,6 +1905,7 @@ export class SignalingHub extends DurableObject {
     webSocketClose(socket) {
         const session=sessionOf(socket);
         this.debug("ws_close",{session:session.sessionId?.slice(0,8)??null});
+        if(session.voiceOnline) this.setVoiceOnlinePresence(socket,false);
         this.leaveRrVoiceMembership(socket);
         this.clearDebugRrPresence(socket);
         this.leaveMembership(socket);
@@ -1744,6 +1914,7 @@ export class SignalingHub extends DurableObject {
     webSocketError(socket) {
         const session=sessionOf(socket);
         this.debug("ws_error",{session:session.sessionId?.slice(0,8)??null});
+        if(session.voiceOnline) this.setVoiceOnlinePresence(socket,false);
         this.leaveRrVoiceMembership(socket);
         this.clearDebugRrPresence(socket);
         this.leaveMembership(socket);
